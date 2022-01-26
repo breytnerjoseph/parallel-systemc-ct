@@ -1,0 +1,537 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="512.58398"
+   height="394.03711"
+   viewBox="0 0 512.58398 394.03711"
+   version="1.1"
+   id="svg165"
+   sodipodi:docname="deltat_efficiency.svg"
+   inkscape:version="0.92.3 (2405546, 2018-03-11)">
+  <metadata
+     id="metadata169">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1920"
+     inkscape:window-height="1132"
+     id="namedview167"
+     showgrid="false"
+     inkscape:zoom="1.5451593"
+     inkscape:cx="165.43363"
+     inkscape:cy="217.72477"
+     inkscape:window-x="0"
+     inkscape:window-y="0"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="g163" />
+  <title
+     id="title2">gl2ps_renderer figure</title>
+  <desc
+     id="desc4">
+Creator: GL2PS 1.4.0, (C) 1999-2017 C. Geuzaine
+For: Octave
+CreationDate: Mon Sep 23 10:15:31 2019
+</desc>
+  <defs
+     id="defs6">
+    <marker
+       inkscape:stockid="DotL"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="DotL"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         inkscape:connector-curvature="0"
+         id="path1212"
+         d="m -2.5,-1 c 0,2.76 -2.24,5 -5,5 -2.76,0 -5,-2.24 -5,-5 0,-2.76 2.24,-5 5,-5 2.76,0 5,2.24 5,5 z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1.00000003pt;stroke-opacity:1"
+         transform="matrix(0.8,0,0,0.8,5.92,0.8)" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow2Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow2Lend"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         inkscape:connector-curvature="0"
+         id="path1172"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.625;stroke-linejoin:round;stroke-opacity:1"
+         d="M 8.7185878,4.0337352 -2.2072895,0.01601326 8.7185884,-4.0017078 c -1.7454984,2.3720609 -1.7354408,5.6174519 -6e-7,8.035443 z"
+         transform="matrix(-1.1,0,0,-1.1,-1.1,0)" />
+    </marker>
+    <marker
+       inkscape:stockid="DotL"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="DotL-0"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         inkscape:connector-curvature="0"
+         id="path1212-2"
+         d="m -2.5,-1 c 0,2.76 -2.24,5 -5,5 -2.76,0 -5,-2.24 -5,-5 0,-2.76 2.24,-5 5,-5 2.76,0 5,2.24 5,5 z"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:1.00000003pt;stroke-opacity:1"
+         transform="matrix(0.8,0,0,0.8,5.92,0.8)" />
+    </marker>
+    <marker
+       inkscape:stockid="Arrow2Lend"
+       orient="auto"
+       refY="0"
+       refX="0"
+       id="Arrow2Lend-2"
+       style="overflow:visible"
+       inkscape:isstock="true">
+      <path
+         inkscape:connector-curvature="0"
+         id="path1172-9"
+         style="fill:#000000;fill-opacity:1;fill-rule:evenodd;stroke:#000000;stroke-width:0.625;stroke-linejoin:round;stroke-opacity:1"
+         d="M 8.7185878,4.0337352 -2.2072895,0.01601326 8.7185884,-4.0017078 c -1.7454984,2.3720609 -1.7354408,5.6174519 -6e-7,8.035443 z"
+         transform="matrix(-1.1,0,0,-1.1,-1.1,0)" />
+    </marker>
+  </defs>
+  <g
+     id="g163"
+     transform="translate(-14.215576,-32.4)">
+    <clipPath
+       id="cp00576432">
+      <polygon
+         points="0,432 576,432 576,0 0,0 "
+         id="polygon12" />
+    </clipPath>
+    <polygon
+       style="fill:#ffffff;shape-rendering:crispEdges"
+       id="polygon15"
+       points="521.28,384.48 74.88,32.4 74.88,384.48 " />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline19"
+       points="74.9246,384.48 74.9246,32.4" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline21"
+       points="75.3264,384.48 75.3264,32.4" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline23"
+       points="79.344,384.48 79.344,32.4" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline25"
+       points="119.52,384.48 119.52,32.4" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline27"
+       points="164.16,384.48 164.16,32.4" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline29"
+       points="208.8,384.48 208.8,32.4" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline31"
+       points="253.44,384.48 253.44,32.4" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline33"
+       points="298.08,384.48 298.08,32.4" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline35"
+       points="432,384.48 432,32.4" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline37"
+       points="521.28,384.48 521.28,32.4" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline39"
+       points="74.9246,384.48 74.9246,380.015" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline41"
+       points="75.3264,384.48 75.3264,380.015" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline43"
+       points="79.344,384.48 79.344,380.015" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline45"
+       points="119.52,384.48 119.52,380.015" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline47"
+       points="164.16,384.48 164.16,380.015" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline49"
+       points="208.8,384.48 208.8,380.015" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline51"
+       points="253.44,384.48 253.44,380.015" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline53"
+       points="298.08,384.48 298.08,380.015" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline55"
+       points="432,384.48 432,380.015" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline57"
+       points="521.28,384.48 521.28,380.015" />
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#262626"
+       id="text61"
+       dy="10"
+       font-size="10"
+       y="389.44052"
+       x="66.015427">0.01</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#262626"
+       id="text63"
+       dy="10"
+       font-size="10"
+       y="389.31226"
+       x="87.424255">0.1</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#262626"
+       id="text65"
+       dy="10"
+       font-size="10"
+       y="389.48099"
+       x="119.52">1</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#262626"
+       id="text67"
+       dy="10"
+       font-size="10"
+       y="389.48099"
+       x="164.16">2</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#262626"
+       id="text69"
+       dy="10"
+       font-size="10"
+       y="389.48099"
+       x="208.8">3</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#262626"
+       id="text71"
+       dy="10"
+       font-size="10"
+       y="389.48099"
+       x="253.44">4</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#262626"
+       id="text73"
+       dy="10"
+       font-size="10"
+       y="389.48099"
+       x="298.07999">5</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#262626"
+       id="text75"
+       dy="10"
+       font-size="10"
+       y="389.48099"
+       x="432">8</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#262626"
+       id="text77"
+       dy="10"
+       font-size="10"
+       y="389.48099"
+       x="521.28003">10</text>
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline79"
+       points="74.88,52.5735 521.28,52.5735" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline81"
+       points="74.88,168.962 521.28,168.962" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline83"
+       points="74.88,277.547 521.28,277.547" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0;stroke-opacity:0.15"
+       id="polyline85"
+       points="74.88,342.697 521.28,342.697" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline87"
+       points="74.88,52.5735 79.348,52.5735" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline89"
+       points="74.88,168.962 79.348,168.962" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline91"
+       points="74.88,277.547 79.348,277.547" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline93"
+       points="74.88,342.697 79.348,342.697" />
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#262626"
+       id="text95"
+       dy="0"
+       font-size="10"
+       y="59.073502"
+       x="46.858768">6.73</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#262626"
+       id="text99"
+       dy="0 0 0"
+       font-size="10"
+       y="175.46201"
+       x="40.858768">0.686</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#262626"
+       id="text103"
+       dy="0 0 0 0"
+       font-size="10"
+       y="284.047"
+       x="34.952518">0.0815</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#262626"
+       id="text107"
+       dy="0 0 0 0"
+       font-size="10"
+       y="349.19699"
+       x="34.524784">0.0227</text>
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0"
+       id="polyline111"
+       points="74.88,384.48 521.28,384.48" />
+    <polyline
+       style="fill:none;stroke:#262626;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-dasharray:16, 0"
+       id="polyline113"
+       points="74.88,384.48 74.88,32.4" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline115"
+       points="74.9246,52.5737 75.3264,168.963 79.344,277.538 119.52,329.394 164.16,338.68 208.8,338.731 253.44,342.304 298.08,338.957 432,335.48 521.28,333.335" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline117"
+       points="77.9246,52.5737 77.3517,54.337 75.8517,55.4268 73.9976,55.4268 72.4976,54.337 71.9246,52.5737 72.4976,50.8103 73.9976,49.7205 75.8517,49.7205 77.3517,50.8103 77.9246,52.5737" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline119"
+       points="78.3264,168.963 77.7534,170.726 76.2535,171.816 74.3994,171.816 72.8994,170.726 72.3264,168.963 72.8994,167.2 74.3994,166.11 76.2535,166.11 77.7534,167.2 78.3264,168.963" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline121"
+       points="82.344,277.538 81.7711,279.301 80.2711,280.391 78.4169,280.391 76.9169,279.301 76.344,277.538 76.9169,275.774 78.4169,274.684 80.2711,274.684 81.7711,275.774 82.344,277.538" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline123"
+       points="122.52,329.394 121.947,331.157 120.447,332.247 118.593,332.247 117.093,331.157 116.52,329.394 117.093,327.631 118.593,326.541 120.447,326.541 121.947,327.631 122.52,329.394" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline125"
+       points="167.16,338.679 166.587,340.443 165.087,341.533 163.233,341.533 161.733,340.443 161.16,338.679 161.733,336.916 163.233,335.826 165.087,335.826 166.587,336.916 167.16,338.679" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline127"
+       points="211.8,338.731 211.227,340.494 209.727,341.584 207.873,341.584 206.373,340.494 205.8,338.731 206.373,336.968 207.873,335.878 209.727,335.878 211.227,336.968 211.8,338.731" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline129"
+       points="256.44,342.304 255.867,344.067 254.367,345.157 252.513,345.157 251.013,344.067 250.44,342.304 251.013,340.54 252.513,339.45 254.367,339.45 255.867,340.54 256.44,342.304" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline131"
+       points="301.08,338.957 300.507,340.721 299.007,341.811 297.153,341.811 295.653,340.721 295.08,338.957 295.653,337.194 297.153,336.104 299.007,336.104 300.507,337.194 301.08,338.957" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline133"
+       points="435,335.48 434.427,337.244 432.927,338.334 431.073,338.334 429.573,337.244 429,335.48 429.573,333.717 431.073,332.627 432.927,332.627 434.427,333.717 435,335.48" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline135"
+       points="524.28,333.335 523.707,335.098 522.207,336.188 520.353,336.188 518.853,335.098 518.28,333.335 518.853,331.572 520.353,330.482 522.207,330.482 523.707,331.572 524.28,333.335" />
+    <clipPath
+       id="clipPath141">
+      <polygon
+         points="0,432 576,432 576,0 0,0 "
+         id="polygon139" />
+    </clipPath>
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot1046"
+       style="font-style:normal;font-weight:normal;font-size:40px;line-height:1.25;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"
+       transform="translate(37.543514,32.4)"><flowRegion
+         id="flowRegion1048"><rect
+           id="rect1050"
+           width="80.897812"
+           height="366.3053"
+           x="-44.008408"
+           y="-25.608776" /></flowRegion><flowPara
+         id="flowPara1052"></flowPara></flowRoot>    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;line-height:0%;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#008000;fill-opacity:1;stroke:none;stroke-width:1"
+       x="305.56067"
+       y="426.21591"
+       id="text1363-6-5-7-0-5-3-6-5-8-0-4-6-6-2-0-9-0-7-9-7"
+       transform="scale(1.0088613,0.99121653)"><tspan
+         sodipodi:role="line"
+         x="308.21692"
+         y="426.21591"
+         style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;line-height:1.25;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#000000;stroke-width:1"
+         id="tspan16732-8-1-4-5-1-0-0-1"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;stroke-width:1"
+           id="tspan4673">Δt (s)</tspan><tspan
+           style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;baseline-shift:super;text-anchor:middle;stroke-width:1"
+           id="tspan1651-0-4"> </tspan></tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;line-height:0%;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#008000;fill-opacity:1;stroke:none;stroke-width:1"
+       x="-218.11029"
+       y="31.843107"
+       id="text1363-6-5-7-0-5-3-6-5-8-0-4-6-6-2-0-9-0-7-9-7-4"
+       transform="matrix(0,-1.0088613,0.99121653,0,0,0)"><tspan
+         sodipodi:role="line"
+         x="-215.45404"
+         y="31.843107"
+         style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;line-height:1.25;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;text-anchor:middle;fill:#000000;stroke-width:1"
+         id="tspan16732-8-1-4-5-1-0-0-1-9"><tspan
+           style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:center;writing-mode:lr-tb;baseline-shift:super;text-anchor:middle;stroke-width:1"
+           id="tspan1651-0-4-3">Wall-clock simulation time </tspan></tspan></text>
+    <rect
+       style="fill:#ffffff;fill-opacity:1;stroke:#000000;stroke-width:0.30462101;stroke-miterlimit:4;stroke-dasharray:none;stroke-dashoffset:0;paint-order:fill markers stroke"
+       id="rect1098"
+       width="257.84811"
+       height="48.912273"
+       x="236.93388"
+       y="84.695312" />
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000"
+       id="text163"
+       dy="5"
+       font-size="10"
+       y="100.66241"
+       x="271.32086">Wall-clock time for fixed Δt</text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000"
+       id="text165"
+       dy="5"
+       font-size="10"
+       y="120.01482"
+       x="271.32086">Wall-clock time adaptive Δt</text>
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline167"
+       points="348.457,43.2032 369.045,43.2032"
+       transform="translate(-100.46911,57.459203)" />
+    <polyline
+       style="fill:none;stroke:#0000ff;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline169"
+       points="361.751,43.2032 361.178,44.9666 359.678,46.0564 357.824,46.0564 356.324,44.9666 355.751,43.2032 356.324,41.4399 357.824,40.3501 359.678,40.3501 361.178,41.4399 361.751,43.2032"
+       transform="translate(-100.46911,57.459203)" />
+    <polyline
+       style="fill:none;stroke:#ff0000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline171"
+       points="348.457,59.3197 369.045,59.3197"
+       transform="translate(-100.46911,60.695116)" />
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000"
+       id="text163-0"
+       font-size="10"
+       y="288.81876"
+       x="262.6713">Optimal wall-clock time <tspan
+   style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;baseline-shift:sub;text-anchor:start"
+   id="tspan4171" />
+</text>
+    <path
+       sodipodi:nodetypes="cc"
+       inkscape:connector-curvature="0"
+       id="path1149"
+       d="m 253.44,342.304 16.82674,-25.46972"
+       style="fill:none;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#DotL);marker-end:url(#Arrow2Lend)" />
+    <path
+       style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:2, 2;stroke-dashoffset:0;stroke-opacity:1"
+       d="M 210.29705,384.18476 V 32.122439"
+       id="path2749"
+       inkscape:connector-curvature="0" />
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000"
+       id="text163-0-5"
+       font-size="10"
+       y="215.77278"
+       x="242.40036">
+      <tspan
+         style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start"
+         id="tspan4173">Average time between</tspan>
+    </text>
+    <path
+       sodipodi:nodetypes="cc"
+       inkscape:connector-curvature="0"
+       id="path1149-7"
+       d="m 210.56872,217.79644 26.69627,0.094"
+       style="fill:none;stroke:#000000;stroke-width:0.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-dasharray:none;stroke-opacity:1;marker-start:url(#DotL-0);marker-end:url(#Arrow2Lend-2)" />
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:12px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000"
+       id="text163-0-5-5"
+       font-size="10"
+       y="231.81003"
+       x="242.38474">
+      <tspan
+         style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start"
+         id="tspan4173-0">input events μ</tspan>
+      <tspan
+         style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;baseline-shift:sub;text-anchor:start"
+         id="tspan4169-3">e</tspan>
+      <tspan
+         style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start"
+         id="tspan4175-1">= 3.04 s</tspan>
+    </text>
+    <text
+       style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start;fill:#000000"
+       id="text163-0-4"
+       font-size="10"
+       y="305.58887"
+       x="263.03848">for a fixed Δt = 4 s ≈ 1.3 μ<tspan
+   style="font-style:normal;font-variant:normal;font-weight:500;font-stretch:normal;font-size:16px;font-family:'CMU Serif';-inkscape-font-specification:'CMU Serif, Medium';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;baseline-shift:sub;text-anchor:start"
+   id="tspan4171-2">e</tspan>
+</text>
+    <polyline
+       transform="translate(-0.31670584,0.06890468)"
+       style="fill:none;stroke:#ff0000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter"
+       id="polyline143"
+       points="74.88,333.346 521.28,333.346" />
+  </g>
+</svg>

@@ -1,0 +1,1692 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="358" onload="init(evt)" viewBox="0 0 1200 358" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search, #ignorecase { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show, #ignorecase:hover, #ignorecase.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching, currentSearchTerm, ignorecase, ignorecaseBtn;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		ignorecaseBtn = document.getElementById("ignorecase");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+		currentSearchTerm = null;
+	}
+
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom();
+			zoom(target);
+		}
+		else if (e.target.id == "unzoom") unzoom();
+		else if (e.target.id == "search") search_prompt();
+		else if (e.target.id == "ignorecase") toggle_ignorecase();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+	}, false)
+
+	// ctrl-I to toggle case-sensitive search
+	window.addEventListener("keydown",function (e) {
+		if (e.ctrlKey && e.keyCode === 73) {
+			e.preventDefault();
+			toggle_ignorecase();
+		}
+	}, false)
+
+	// functions
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+		return;
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		// Fit in full text width
+		if (/^ *$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+			return;
+
+		for (var x = txt.length - 2; x > 0; x--) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+		search();
+	}
+	function unzoom() {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			update_text(el[i]);
+		}
+		search();
+	}
+
+	// search
+	function toggle_ignorecase() {
+		ignorecase = !ignorecase;
+		if (ignorecase) {
+			ignorecaseBtn.classList.add("show");
+		} else {
+			ignorecaseBtn.classList.remove("show");
+		}
+		reset_search();
+		search();
+	}
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)"
+			    + (ignorecase ? ", ignoring case" : "")
+			    + "\nPress Ctrl-i to toggle case sensitivity", "");
+			if (term != null) {
+				currentSearchTerm = term;
+				search();
+			}
+		} else {
+			reset_search();
+			searching = 0;
+			currentSearchTerm = null;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		if (currentSearchTerm === null) return;
+		var term = currentSearchTerm;
+
+		var re = new RegExp(term, ignorecase ? 'i' : '');
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="358.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >Flame Graph</text>
+<text id="details" x="10.00" y="341" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="ignorecase" x="1174.00" y="24" >ic</text>
+<text id="matched" x="1090.00" y="341" > </text>
+<g id="frames">
+<g >
+<title>free (8,012 samples, 0.01%)</title><rect x="366.0" y="133" width="0.2" height="15.0" fill="rgb(215,61,48)" rx="2" ry="2" />
+<text  x="369.03" y="143.5" ></text>
+</g>
+<g >
+<title>malloc (1,967,976 samples, 2.66%)</title><rect x="572.7" y="53" width="31.4" height="15.0" fill="rgb(212,100,31)" rx="2" ry="2" />
+<text  x="575.71" y="63.5" >ma..</text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::create_synchronization_process (493,448 samples, 0.67%)</title><rect x="344.4" y="245" width="7.8" height="15.0" fill="rgb(233,24,35)" rx="2" ry="2" />
+<text  x="347.36" y="255.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::store_input_event_sensitivity_list (12,000 samples, 0.02%)</title><rect x="341.0" y="261" width="0.2" height="15.0" fill="rgb(238,183,11)" rx="2" ry="2" />
+<text  x="344.00" y="271.5" ></text>
+</g>
+<g >
+<title>boost::numeric::odeint::runge_kutta_dopri5::resize_k_x_tmp_impl (213,343 samples, 0.29%)</title><rect x="672.0" y="101" width="3.4" height="15.0" fill="rgb(205,12,47)" rx="2" ry="2" />
+<text  x="674.96" y="111.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::catch_up (859,566 samples, 1.16%)</title><rect x="1175.5" y="149" width="13.7" height="15.0" fill="rgb(216,158,3)" rx="2" ry="2" />
+<text  x="1178.51" y="159.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::begin (6,596 samples, 0.01%)</title><rect x="1185.5" y="101" width="0.1" height="15.0" fill="rgb(205,41,24)" rx="2" ry="2" />
+<text  x="1188.54" y="111.5" ></text>
+</g>
+<g >
+<title>std::_Hashtable::_M_emplace (75,800 samples, 0.10%)</title><rect x="339.3" y="229" width="1.3" height="15.0" fill="rgb(216,3,51)" rx="2" ry="2" />
+<text  x="342.35" y="239.5" ></text>
+</g>
+<g >
+<title>boost::numeric::odeint::controlled_runge_kutta::resize_m_xnew_impl (49,233 samples, 0.07%)</title><rect x="492.3" y="117" width="0.8" height="15.0" fill="rgb(216,66,48)" rx="2" ry="2" />
+<text  x="495.27" y="127.5" ></text>
+</g>
+<g >
+<title>malloc (384,540 samples, 0.52%)</title><rect x="444.3" y="101" width="6.1" height="15.0" fill="rgb(205,88,47)" rx="2" ry="2" />
+<text  x="447.29" y="111.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (99,060 samples, 0.13%)</title><rect x="1176.6" y="53" width="1.6" height="15.0" fill="rgb(246,96,51)" rx="2" ry="2" />
+<text  x="1179.59" y="63.5" ></text>
+</g>
+<g >
+<title>memcmp (181,885 samples, 0.25%)</title><rect x="332.1" y="261" width="2.9" height="15.0" fill="rgb(219,175,31)" rx="2" ry="2" />
+<text  x="335.06" y="271.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_append (12,000 samples, 0.02%)</title><rect x="350.9" y="229" width="0.2" height="15.0" fill="rgb(210,222,44)" rx="2" ry="2" />
+<text  x="353.94" y="239.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (62,433 samples, 0.08%)</title><rect x="363.1" y="133" width="1.0" height="15.0" fill="rgb(224,91,40)" rx="2" ry="2" />
+<text  x="366.09" y="143.5" ></text>
+</g>
+<g >
+<title>operator delete (8,405 samples, 0.01%)</title><rect x="361.6" y="149" width="0.2" height="15.0" fill="rgb(207,155,19)" rx="2" ry="2" />
+<text  x="364.64" y="159.5" ></text>
+</g>
+<g >
+<title>std::thread::_State_impl::_M_run (52,254,478 samples, 70.52%)</title><rect x="357.8" y="293" width="832.2" height="15.0" fill="rgb(210,61,1)" rx="2" ry="2" />
+<text  x="360.83" y="303.5" >std::thread::_State_impl::_M_run</text>
+</g>
+<g >
+<title>inputs_manager::store_signal_rst_port (91,800 samples, 0.12%)</title><rect x="339.1" y="245" width="1.5" height="15.0" fill="rgb(250,194,45)" rx="2" ry="2" />
+<text  x="342.10" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (16,510 samples, 0.02%)</title><rect x="1182.7" y="69" width="0.2" height="15.0" fill="rgb(252,62,36)" rx="2" ry="2" />
+<text  x="1185.67" y="79.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (24,036 samples, 0.03%)</title><rect x="366.2" y="133" width="0.3" height="15.0" fill="rgb(253,202,2)" rx="2" ry="2" />
+<text  x="369.16" y="143.5" ></text>
+</g>
+<g >
+<title>free (983,988 samples, 1.33%)</title><rect x="557.0" y="53" width="15.7" height="15.0" fill="rgb(217,118,19)" rx="2" ry="2" />
+<text  x="560.04" y="63.5" ></text>
+</g>
+<g >
+<title>all (74,095,425 samples, 100%)</title><rect x="10.0" y="309" width="1180.0" height="15.0" fill="rgb(232,167,11)" rx="2" ry="2" />
+<text  x="13.00" y="319.5" ></text>
+</g>
+<g >
+<title>sct_kernel::numerical_solver::integrate (855,965 samples, 1.16%)</title><rect x="1175.5" y="117" width="13.7" height="15.0" fill="rgb(238,142,7)" rx="2" ry="2" />
+<text  x="1178.54" y="127.5" ></text>
+</g>
+<g >
+<title>malloc (1,475,982 samples, 1.99%)</title><rect x="1051.4" y="85" width="23.5" height="15.0" fill="rgb(235,87,27)" rx="2" ry="2" />
+<text  x="1054.40" y="95.5" >m..</text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_assign (16,000 samples, 0.02%)</title><rect x="351.1" y="229" width="0.3" height="15.0" fill="rgb(218,115,19)" rx="2" ry="2" />
+<text  x="354.13" y="239.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_replace (8,000 samples, 0.01%)</title><rect x="336.0" y="261" width="0.2" height="15.0" fill="rgb(230,120,51)" rx="2" ry="2" />
+<text  x="339.04" y="271.5" ></text>
+</g>
+<g >
+<title>inputs_manager::get_sensitivity_list (79,600 samples, 0.11%)</title><rect x="336.9" y="261" width="1.3" height="15.0" fill="rgb(210,19,49)" rx="2" ry="2" />
+<text  x="339.94" y="271.5" ></text>
+</g>
+<g >
+<title>operator new (65,998 samples, 0.09%)</title><rect x="1163.0" y="53" width="1.1" height="15.0" fill="rgb(212,31,4)" rx="2" ry="2" />
+<text  x="1166.04" y="63.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::operator[] (98,466 samples, 0.13%)</title><rect x="1157.3" y="85" width="1.5" height="15.0" fill="rgb(208,57,28)" rx="2" ry="2" />
+<text  x="1160.27" y="95.5" ></text>
+</g>
+<g >
+<title>memcpy (377,285 samples, 0.51%)</title><rect x="1010.1" y="101" width="6.0" height="15.0" fill="rgb(206,83,46)" rx="2" ry="2" />
+<text  x="1013.13" y="111.5" ></text>
+</g>
+<g >
+<title>operator new (12,015 samples, 0.02%)</title><rect x="335.2" y="261" width="0.1" height="15.0" fill="rgb(233,73,12)" rx="2" ry="2" />
+<text  x="338.15" y="271.5" ></text>
+</g>
+<g >
+<title>pthread_once (52,169,292 samples, 70.41%)</title><rect x="358.8" y="261" width="830.8" height="15.0" fill="rgb(253,227,27)" rx="2" ry="2" />
+<text  x="361.78" y="271.5" >pthread_once</text>
+</g>
+<g >
+<title>sct_kernel::ode_system::create_checkpoint (33,622 samples, 0.05%)</title><rect x="1174.2" y="149" width="0.5" height="15.0" fill="rgb(240,70,14)" rx="2" ry="2" />
+<text  x="1177.18" y="159.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::end (131,996 samples, 0.18%)</title><rect x="988.4" y="117" width="2.1" height="15.0" fill="rgb(246,83,53)" rx="2" ry="2" />
+<text  x="991.44" y="127.5" ></text>
+</g>
+<g >
+<title>Neuron::is_event (527,984 samples, 0.71%)</title><rect x="1159.9" y="85" width="8.4" height="15.0" fill="rgb(235,93,44)" rx="2" ry="2" />
+<text  x="1162.89" y="95.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::handle_state_events (7,741,881 samples, 10.45%)</title><rect x="365.8" y="149" width="123.3" height="15.0" fill="rgb(241,191,35)" rx="2" ry="2" />
+<text  x="368.77" y="159.5" >sct_kernel::syn..</text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::swap (8,006 samples, 0.01%)</title><rect x="356.4" y="277" width="0.1" height="15.0" fill="rgb(246,134,24)" rx="2" ry="2" />
+<text  x="359.36" y="287.5" ></text>
+</g>
+<g >
+<title>sct_core::ct_module::ct_module (308,814 samples, 0.42%)</title><rect x="331.4" y="277" width="4.9" height="15.0" fill="rgb(232,83,16)" rx="2" ry="2" />
+<text  x="334.38" y="287.5" ></text>
+</g>
+<g >
+<title>Neuron::get_derivatives (3,935,952 samples, 5.31%)</title><rect x="876.5" y="85" width="62.6" height="15.0" fill="rgb(229,82,10)" rx="2" ry="2" />
+<text  x="879.46" y="95.5" >Neuron..</text>
+</g>
+<g >
+<title>std::_Hashtable::_M_assign (8,012 samples, 0.01%)</title><rect x="1171.6" y="69" width="0.2" height="15.0" fill="rgb(208,161,1)" rx="2" ry="2" />
+<text  x="1174.64" y="79.5" ></text>
+</g>
+<g >
+<title>Neuron::execute_updates (12,800 samples, 0.02%)</title><rect x="361.1" y="149" width="0.2" height="15.0" fill="rgb(229,115,20)" rx="2" ry="2" />
+<text  x="364.10" y="159.5" ></text>
+</g>
+<g >
+<title>std::_Hashtable::_M_insert_unique_node (28,000 samples, 0.04%)</title><rect x="339.9" y="213" width="0.4" height="15.0" fill="rgb(252,201,16)" rx="2" ry="2" />
+<text  x="342.86" y="223.5" ></text>
+</g>
+<g >
+<title>memcpy (327,471 samples, 0.44%)</title><rect x="315.7" y="261" width="5.2" height="15.0" fill="rgb(251,80,31)" rx="2" ry="2" />
+<text  x="318.69" y="271.5" ></text>
+</g>
+<g >
+<title>function_wrapper::impl_type::~impl_type (59,364 samples, 0.08%)</title><rect x="357.8" y="261" width="1.0" height="15.0" fill="rgb(215,206,50)" rx="2" ry="2" />
+<text  x="360.83" y="271.5" ></text>
+</g>
+<g >
+<title>memcpy (8,153 samples, 0.01%)</title><rect x="1186.1" y="85" width="0.2" height="15.0" fill="rgb(218,228,26)" rx="2" ry="2" />
+<text  x="1189.14" y="95.5" ></text>
+</g>
+<g >
+<title>malloc (64,049 samples, 0.09%)</title><rect x="471.1" y="69" width="1.1" height="15.0" fill="rgb(222,73,47)" rx="2" ry="2" />
+<text  x="474.14" y="79.5" ></text>
+</g>
+<g >
+<title>memcmp (142,600 samples, 0.19%)</title><rect x="341.4" y="245" width="2.3" height="15.0" fill="rgb(217,144,40)" rx="2" ry="2" />
+<text  x="344.39" y="255.5" ></text>
+</g>
+<g >
+<title>sct_kernel::numerical_solver::integrate (42,831,548 samples, 57.81%)</title><rect x="489.7" y="133" width="682.1" height="15.0" fill="rgb(242,28,24)" rx="2" ry="2" />
+<text  x="492.66" y="143.5" >sct_kernel::numerical_solver::integrate</text>
+</g>
+<g >
+<title>malloc (8,000 samples, 0.01%)</title><rect x="344.2" y="229" width="0.2" height="15.0" fill="rgb(236,85,35)" rx="2" ry="2" />
+<text  x="347.23" y="239.5" ></text>
+</g>
+<g >
+<title>malloc (160,246 samples, 0.22%)</title><rect x="391.2" y="101" width="2.6" height="15.0" fill="rgb(224,182,26)" rx="2" ry="2" />
+<text  x="394.21" y="111.5" ></text>
+</g>
+<g >
+<title>sct_core::operator/ (163,998 samples, 0.22%)</title><rect x="1123.2" y="117" width="2.6" height="15.0" fill="rgb(228,8,48)" rx="2" ry="2" />
+<text  x="1126.22" y="127.5" ></text>
+</g>
+<g >
+<title>free (19,812 samples, 0.03%)</title><rect x="1176.9" y="37" width="0.3" height="15.0" fill="rgb(239,135,1)" rx="2" ry="2" />
+<text  x="1179.91" y="47.5" ></text>
+</g>
+<g >
+<title>std::__future_base::_Result::~_Result (8,871 samples, 0.01%)</title><rect x="358.6" y="229" width="0.2" height="15.0" fill="rgb(234,59,33)" rx="2" ry="2" />
+<text  x="361.63" y="239.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::operator+= (14,859 samples, 0.02%)</title><rect x="1188.2" y="85" width="0.2" height="15.0" fill="rgb(230,198,19)" rx="2" ry="2" />
+<text  x="1191.19" y="95.5" ></text>
+</g>
+<g >
+<title>operator new (68,096 samples, 0.09%)</title><rect x="483.4" y="53" width="1.1" height="15.0" fill="rgb(217,158,47)" rx="2" ry="2" />
+<text  x="486.45" y="63.5" ></text>
+</g>
+<g >
+<title>std::_Function_handler::_M_invoke (1,025,697 samples, 1.38%)</title><rect x="1155.4" y="117" width="16.4" height="15.0" fill="rgb(228,201,11)" rx="2" ry="2" />
+<text  x="1158.43" y="127.5" ></text>
+</g>
+<g >
+<title>std::_Hash_bytes (8,000 samples, 0.01%)</title><rect x="339.7" y="213" width="0.2" height="15.0" fill="rgb(247,164,0)" rx="2" ry="2" />
+<text  x="342.73" y="223.5" ></text>
+</g>
+<g >
+<title>operator new (8,000 samples, 0.01%)</title><rect x="339.6" y="213" width="0.1" height="15.0" fill="rgb(223,18,42)" rx="2" ry="2" />
+<text  x="342.60" y="223.5" ></text>
+</g>
+<g >
+<title>__dynamic_cast (8,000 samples, 0.01%)</title><rect x="309.8" y="261" width="0.2" height="15.0" fill="rgb(226,74,37)" rx="2" ry="2" />
+<text  x="312.83" y="271.5" ></text>
+</g>
+<g >
+<title>operator new (68,096 samples, 0.09%)</title><rect x="480.2" y="69" width="1.1" height="15.0" fill="rgb(248,126,46)" rx="2" ry="2" />
+<text  x="483.19" y="79.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::operator+= (819,990 samples, 1.11%)</title><rect x="658.9" y="69" width="13.1" height="15.0" fill="rgb(226,107,23)" rx="2" ry="2" />
+<text  x="661.90" y="79.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::compare (327,471 samples, 0.44%)</title><rect x="320.9" y="261" width="5.2" height="15.0" fill="rgb(229,91,11)" rx="2" ry="2" />
+<text  x="323.90" y="271.5" ></text>
+</g>
+<g >
+<title>sct_core::operator+ (3,279,960 samples, 4.43%)</title><rect x="619.7" y="85" width="52.3" height="15.0" fill="rgb(223,151,16)" rx="2" ry="2" />
+<text  x="622.72" y="95.5" >sct_c..</text>
+</g>
+<g >
+<title>sct_core::operator+ (66,040 samples, 0.09%)</title><rect x="1178.2" y="69" width="1.0" height="15.0" fill="rgb(225,111,43)" rx="2" ry="2" />
+<text  x="1181.17" y="79.5" ></text>
+</g>
+<g >
+<title>std::_Function_handler::_M_invoke (812,000 samples, 1.10%)</title><rect x="1158.8" y="101" width="13.0" height="15.0" fill="rgb(209,180,33)" rx="2" ry="2" />
+<text  x="1161.84" y="111.5" ></text>
+</g>
+<g >
+<title>strlen (12,000 samples, 0.02%)</title><rect x="352.9" y="245" width="0.1" height="15.0" fill="rgb(251,169,21)" rx="2" ry="2" />
+<text  x="355.85" y="255.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (131,050 samples, 0.18%)</title><rect x="1133.5" y="85" width="2.1" height="15.0" fill="rgb(233,134,16)" rx="2" ry="2" />
+<text  x="1136.50" y="95.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_replace (8,000 samples, 0.01%)</title><rect x="352.7" y="245" width="0.1" height="15.0" fill="rgb(220,90,7)" rx="2" ry="2" />
+<text  x="355.66" y="255.5" ></text>
+</g>
+<g >
+<title>inputs_manager::register_input_ports (147,800 samples, 0.20%)</title><rect x="338.2" y="261" width="2.4" height="15.0" fill="rgb(220,49,48)" rx="2" ry="2" />
+<text  x="341.20" y="271.5" ></text>
+</g>
+<g >
+<title>free (1,803,978 samples, 2.43%)</title><rect x="497.0" y="85" width="28.7" height="15.0" fill="rgb(239,135,2)" rx="2" ry="2" />
+<text  x="499.97" y="95.5" >free</text>
+</g>
+<g >
+<title>free (70,004 samples, 0.09%)</title><rect x="1126.9" y="101" width="1.2" height="15.0" fill="rgb(244,158,53)" rx="2" ry="2" />
+<text  x="1129.95" y="111.5" ></text>
+</g>
+<g >
+<title>strlen (327,471 samples, 0.44%)</title><rect x="326.1" y="261" width="5.2" height="15.0" fill="rgb(223,63,53)" rx="2" ry="2" />
+<text  x="329.12" y="271.5" ></text>
+</g>
+<g >
+<title>malloc (16,510 samples, 0.02%)</title><rect x="1182.4" y="69" width="0.3" height="15.0" fill="rgb(229,135,23)" rx="2" ry="2" />
+<text  x="1185.41" y="79.5" ></text>
+</g>
+<g >
+<title>memcpy (384,540 samples, 0.52%)</title><rect x="450.4" y="101" width="6.1" height="15.0" fill="rgb(240,182,18)" rx="2" ry="2" />
+<text  x="453.41" y="111.5" ></text>
+</g>
+<g >
+<title>malloc (81,999 samples, 0.11%)</title><rect x="1121.9" y="85" width="1.3" height="15.0" fill="rgb(210,32,37)" rx="2" ry="2" />
+<text  x="1124.92" y="95.5" ></text>
+</g>
+<g >
+<title>free (47,624 samples, 0.06%)</title><rect x="1184.6" y="101" width="0.8" height="15.0" fill="rgb(224,93,49)" rx="2" ry="2" />
+<text  x="1187.62" y="111.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (5,903,928 samples, 7.97%)</title><rect x="525.7" y="85" width="94.0" height="15.0" fill="rgb(206,148,30)" rx="2" ry="2" />
+<text  x="528.70" y="95.5" >sct_core::o..</text>
+</g>
+<g >
+<title>Neuron::is_event (544,768 samples, 0.74%)</title><rect x="476.9" y="101" width="8.7" height="15.0" fill="rgb(245,94,28)" rx="2" ry="2" />
+<text  x="479.94" y="111.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_assign (8,000 samples, 0.01%)</title><rect x="335.9" y="261" width="0.1" height="15.0" fill="rgb(226,86,44)" rx="2" ry="2" />
+<text  x="338.92" y="271.5" ></text>
+</g>
+<g >
+<title>Neuron::get_derivatives (131,288 samples, 0.18%)</title><rect x="1156.7" y="101" width="2.1" height="15.0" fill="rgb(222,211,28)" rx="2" ry="2" />
+<text  x="1159.74" y="111.5" ></text>
+</g>
+<g >
+<title>memcpy (70,004 samples, 0.09%)</title><rect x="1130.3" y="85" width="1.1" height="15.0" fill="rgb(227,193,19)" rx="2" ry="2" />
+<text  x="1133.29" y="95.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::operator+= (819,990 samples, 1.11%)</title><rect x="855.6" y="85" width="13.0" height="15.0" fill="rgb(218,55,5)" rx="2" ry="2" />
+<text  x="858.57" y="95.5" ></text>
+</g>
+<g >
+<title>memcpy (14,859 samples, 0.02%)</title><rect x="1187.4" y="69" width="0.3" height="15.0" fill="rgb(250,33,11)" rx="2" ry="2" />
+<text  x="1190.45" y="79.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_assign (8,000 samples, 0.01%)</title><rect x="352.5" y="245" width="0.1" height="15.0" fill="rgb(220,25,52)" rx="2" ry="2" />
+<text  x="355.47" y="255.5" ></text>
+</g>
+<g >
+<title>boost::numeric::odeint::default_operations::scale_sum6::operator() (224,536 samples, 0.30%)</title><rect x="1175.6" y="85" width="3.6" height="15.0" fill="rgb(225,191,27)" rx="2" ry="2" />
+<text  x="1178.65" y="95.5" ></text>
+</g>
+<g >
+<title>memcpy (23,114 samples, 0.03%)</title><rect x="1181.8" y="53" width="0.3" height="15.0" fill="rgb(210,81,19)" rx="2" ry="2" />
+<text  x="1184.78" y="63.5" ></text>
+</g>
+<g >
+<title>operator delete (435,062 samples, 0.59%)</title><rect x="40.3" y="277" width="6.9" height="15.0" fill="rgb(211,88,16)" rx="2" ry="2" />
+<text  x="43.27" y="287.5" ></text>
+</g>
+<g >
+<title>malloc (20,811 samples, 0.03%)</title><rect x="363.4" y="117" width="0.4" height="15.0" fill="rgb(244,45,48)" rx="2" ry="2" />
+<text  x="366.43" y="127.5" ></text>
+</g>
+<g >
+<title>memcpy (448,630 samples, 0.61%)</title><rect x="431.0" y="85" width="7.2" height="15.0" fill="rgb(228,4,12)" rx="2" ry="2" />
+<text  x="434.02" y="95.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::restore_trace (45,948 samples, 0.06%)</title><rect x="1174.8" y="133" width="0.7" height="15.0" fill="rgb(221,1,49)" rx="2" ry="2" />
+<text  x="1177.78" y="143.5" ></text>
+</g>
+<g >
+<title>malloc (574,217 samples, 0.77%)</title><rect x="1001.0" y="101" width="9.1" height="15.0" fill="rgb(205,154,40)" rx="2" ry="2" />
+<text  x="1003.99" y="111.5" ></text>
+</g>
+<g >
+<title>std::_Hashtable::_M_rehash (13,200 samples, 0.02%)</title><rect x="1173.4" y="101" width="0.2" height="15.0" fill="rgb(235,60,48)" rx="2" ry="2" />
+<text  x="1176.42" y="111.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_assign (56,030 samples, 0.08%)</title><rect x="354.4" y="277" width="0.9" height="15.0" fill="rgb(242,180,53)" rx="2" ry="2" />
+<text  x="357.39" y="287.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (138,684 samples, 0.19%)</title><rect x="1179.9" y="85" width="2.2" height="15.0" fill="rgb(215,193,15)" rx="2" ry="2" />
+<text  x="1182.94" y="95.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::size (32,048 samples, 0.04%)</title><rect x="371.2" y="85" width="0.6" height="15.0" fill="rgb(246,144,26)" rx="2" ry="2" />
+<text  x="374.24" y="95.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::get_state (20,811 samples, 0.03%)</title><rect x="362.1" y="149" width="0.3" height="15.0" fill="rgb(228,101,36)" rx="2" ry="2" />
+<text  x="365.10" y="159.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::write_trace (677,726 samples, 0.91%)</title><rect x="1125.8" y="117" width="10.8" height="15.0" fill="rgb(222,116,30)" rx="2" ry="2" />
+<text  x="1128.83" y="127.5" ></text>
+</g>
+<g >
+<title>memcpy (8,012 samples, 0.01%)</title><rect x="366.4" y="117" width="0.1" height="15.0" fill="rgb(233,192,26)" rx="2" ry="2" />
+<text  x="369.42" y="127.5" ></text>
+</g>
+<g >
+<title>sct_core::operator+ (46,228 samples, 0.06%)</title><rect x="1187.7" y="101" width="0.7" height="15.0" fill="rgb(249,52,12)" rx="2" ry="2" />
+<text  x="1190.69" y="111.5" ></text>
+</g>
+<g >
+<title>inputs_manager::use_checkpoints (16,411 samples, 0.02%)</title><rect x="1157.0" y="85" width="0.3" height="15.0" fill="rgb(228,44,19)" rx="2" ry="2" />
+<text  x="1160.01" y="95.5" ></text>
+</g>
+<g >
+<title>malloc (897,260 samples, 1.21%)</title><rect x="416.7" y="85" width="14.3" height="15.0" fill="rgb(218,184,31)" rx="2" ry="2" />
+<text  x="419.73" y="95.5" ></text>
+</g>
+<g >
+<title>free (20,811 samples, 0.03%)</title><rect x="362.8" y="133" width="0.3" height="15.0" fill="rgb(208,226,29)" rx="2" ry="2" />
+<text  x="365.76" y="143.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::get_tentative_end_time (41,622 samples, 0.06%)</title><rect x="365.1" y="149" width="0.7" height="15.0" fill="rgb(206,123,15)" rx="2" ry="2" />
+<text  x="368.11" y="159.5" ></text>
+</g>
+<g >
+<title>std::_Hashtable::_M_rehash (12,000 samples, 0.02%)</title><rect x="340.0" y="197" width="0.2" height="15.0" fill="rgb(221,6,38)" rx="2" ry="2" />
+<text  x="342.99" y="207.5" ></text>
+</g>
+<g >
+<title>memcpy (983,988 samples, 1.33%)</title><rect x="604.1" y="53" width="15.6" height="15.0" fill="rgb(248,137,16)" rx="2" ry="2" />
+<text  x="607.05" y="63.5" ></text>
+</g>
+<g >
+<title>memcpy (68,049 samples, 0.09%)</title><rect x="467.0" y="85" width="1.1" height="15.0" fill="rgb(246,187,41)" rx="2" ry="2" />
+<text  x="469.99" y="95.5" ></text>
+</g>
+<g >
+<title>Neuron::get_derivatives (79,248 samples, 0.11%)</title><rect x="1183.4" y="69" width="1.2" height="15.0" fill="rgb(211,16,3)" rx="2" ry="2" />
+<text  x="1186.36" y="79.5" ></text>
+</g>
+<g >
+<title>sct_core::abs (491,994 samples, 0.66%)</title><rect x="976.4" y="117" width="7.8" height="15.0" fill="rgb(209,14,48)" rx="2" ry="2" />
+<text  x="979.40" y="127.5" ></text>
+</g>
+<g >
+<title>std::_Function_base::_Base_manager::_M_manager (23,914 samples, 0.03%)</title><rect x="1188.7" y="101" width="0.4" height="15.0" fill="rgb(229,85,16)" rx="2" ry="2" />
+<text  x="1191.71" y="111.5" ></text>
+</g>
+<g >
+<title>malloc (70,004 samples, 0.09%)</title><rect x="1129.2" y="85" width="1.1" height="15.0" fill="rgb(230,192,24)" rx="2" ry="2" />
+<text  x="1132.18" y="95.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (4,919,940 samples, 6.64%)</title><rect x="541.4" y="69" width="78.3" height="15.0" fill="rgb(223,39,19)" rx="2" ry="2" />
+<text  x="544.37" y="79.5" >sct_core:..</text>
+</g>
+<g >
+<title>std::_Rb_tree_rebalance_for_erase (68,055 samples, 0.09%)</title><rect x="369.9" y="117" width="1.0" height="15.0" fill="rgb(210,32,6)" rx="2" ry="2" />
+<text  x="372.86" y="127.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::integrate_equations (858,365 samples, 1.16%)</title><rect x="1175.5" y="133" width="13.7" height="15.0" fill="rgb(207,82,53)" rx="2" ry="2" />
+<text  x="1178.53" y="143.5" ></text>
+</g>
+<g >
+<title>operator delete (10,387 samples, 0.01%)</title><rect x="1175.0" y="117" width="0.2" height="15.0" fill="rgb(207,81,52)" rx="2" ry="2" />
+<text  x="1178.02" y="127.5" ></text>
+</g>
+<g >
+<title>free (2,296,196 samples, 3.10%)</title><rect x="939.1" y="117" width="36.6" height="15.0" fill="rgb(242,68,51)" rx="2" ry="2" />
+<text  x="942.14" y="127.5" >free</text>
+</g>
+<g >
+<title>std::__future_base::_State_baseV2::_M_do_set (52,127,670 samples, 70.35%)</title><rect x="359.4" y="229" width="830.2" height="15.0" fill="rgb(248,180,20)" rx="2" ry="2" />
+<text  x="362.44" y="239.5" >std::__future_base::_State_baseV2::_M_do_set</text>
+</g>
+<g >
+<title>boost::numeric::odeint::controlled_runge_kutta::resize_m_dxdt_new_impl (49,233 samples, 0.07%)</title><rect x="490.7" y="117" width="0.8" height="15.0" fill="rgb(224,228,42)" rx="2" ry="2" />
+<text  x="493.70" y="127.5" ></text>
+</g>
+<g >
+<title>sct_core::operator+ (66,040 samples, 0.09%)</title><rect x="1182.1" y="85" width="1.1" height="15.0" fill="rgb(231,175,15)" rx="2" ry="2" />
+<text  x="1185.15" y="95.5" ></text>
+</g>
+<g >
+<title>std::vector::_M_realloc_insert (24,000 samples, 0.03%)</title><rect x="337.8" y="245" width="0.4" height="15.0" fill="rgb(229,85,48)" rx="2" ry="2" />
+<text  x="340.82" y="255.5" ></text>
+</g>
+<g >
+<title>boost::numeric::odeint::make_adaptive_time_range (108,162 samples, 0.15%)</title><rect x="371.1" y="117" width="1.7" height="15.0" fill="rgb(216,164,30)" rx="2" ry="2" />
+<text  x="374.12" y="127.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (25,610 samples, 0.03%)</title><rect x="364.5" y="117" width="0.4" height="15.0" fill="rgb(228,202,51)" rx="2" ry="2" />
+<text  x="367.50" y="127.5" ></text>
+</g>
+<g >
+<title>operator new (65,525 samples, 0.09%)</title><rect x="1132.5" y="85" width="1.0" height="15.0" fill="rgb(251,191,30)" rx="2" ry="2" />
+<text  x="1135.45" y="95.5" ></text>
+</g>
+<g >
+<title>memset (68,096 samples, 0.09%)</title><rect x="482.4" y="53" width="1.0" height="15.0" fill="rgb(213,214,21)" rx="2" ry="2" />
+<text  x="485.36" y="63.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::size (32,822 samples, 0.04%)</title><rect x="491.0" y="101" width="0.5" height="15.0" fill="rgb(254,25,51)" rx="2" ry="2" />
+<text  x="493.96" y="111.5" ></text>
+</g>
+<g >
+<title>malloc (245,997 samples, 0.33%)</title><rect x="980.3" y="101" width="3.9" height="15.0" fill="rgb(231,95,7)" rx="2" ry="2" />
+<text  x="983.31" y="111.5" ></text>
+</g>
+<g >
+<title>memcpy (40,219 samples, 0.05%)</title><rect x="38.4" y="277" width="0.7" height="15.0" fill="rgb(207,201,24)" rx="2" ry="2" />
+<text  x="41.43" y="287.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (2,691,780 samples, 3.63%)</title><rect x="395.3" y="117" width="42.9" height="15.0" fill="rgb(249,90,29)" rx="2" ry="2" />
+<text  x="398.29" y="127.5" >sct_..</text>
+</g>
+<g >
+<title>inputs_manager::create_checkpoint (16,811 samples, 0.02%)</title><rect x="1174.4" y="133" width="0.3" height="15.0" fill="rgb(248,105,31)" rx="2" ry="2" />
+<text  x="1177.44" y="143.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::restore_trace (276,226 samples, 0.37%)</title><rect x="366.5" y="133" width="4.4" height="15.0" fill="rgb(212,74,38)" rx="2" ry="2" />
+<text  x="369.54" y="143.5" ></text>
+</g>
+<g >
+<title>std::vector::_M_realloc_insert (16,000 samples, 0.02%)</title><rect x="310.0" y="261" width="0.2" height="15.0" fill="rgb(237,137,16)" rx="2" ry="2" />
+<text  x="312.96" y="271.5" ></text>
+</g>
+<g >
+<title>strlen (64,031 samples, 0.09%)</title><rect x="356.8" y="277" width="1.0" height="15.0" fill="rgb(244,69,31)" rx="2" ry="2" />
+<text  x="359.80" y="287.5" ></text>
+</g>
+<g >
+<title>strlen (24,000 samples, 0.03%)</title><rect x="351.8" y="229" width="0.4" height="15.0" fill="rgb(247,108,29)" rx="2" ry="2" />
+<text  x="354.83" y="239.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::integrate_equations (42,930,014 samples, 57.94%)</title><rect x="489.4" y="149" width="683.7" height="15.0" fill="rgb(213,162,53)" rx="2" ry="2" />
+<text  x="492.40" y="159.5" >sct_kernel::synchronization_layer::integrate_equations</text>
+</g>
+<g >
+<title>std::_Function_base::_Base_manager::_M_manager (104,192 samples, 0.14%)</title><rect x="474.2" y="117" width="1.7" height="15.0" fill="rgb(213,152,16)" rx="2" ry="2" />
+<text  x="477.20" y="127.5" ></text>
+</g>
+<g >
+<title>std::__detail::_Map_base::operator[] (26,400 samples, 0.04%)</title><rect x="1173.3" y="117" width="0.4" height="15.0" fill="rgb(254,74,25)" rx="2" ry="2" />
+<text  x="1176.28" y="127.5" ></text>
+</g>
+<g >
+<title>std::_Hashtable::_M_rehash (204,288 samples, 0.28%)</title><rect x="481.3" y="69" width="3.2" height="15.0" fill="rgb(231,88,48)" rx="2" ry="2" />
+<text  x="484.28" y="79.5" ></text>
+</g>
+<g >
+<title>free (448,630 samples, 0.61%)</title><rect x="409.6" y="85" width="7.1" height="15.0" fill="rgb(209,78,31)" rx="2" ry="2" />
+<text  x="412.58" y="95.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (1,607,718 samples, 2.17%)</title><rect x="990.5" y="117" width="25.6" height="15.0" fill="rgb(206,196,16)" rx="2" ry="2" />
+<text  x="993.54" y="127.5" >s..</text>
+</g>
+<g >
+<title>memcpy (8,000 samples, 0.01%)</title><rect x="350.1" y="229" width="0.1" height="15.0" fill="rgb(253,34,18)" rx="2" ry="2" />
+<text  x="353.05" y="239.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::locate_state_event_at_start_of_interval (48,400 samples, 0.07%)</title><rect x="1173.1" y="149" width="0.7" height="15.0" fill="rgb(218,176,24)" rx="2" ry="2" />
+<text  x="1176.07" y="159.5" ></text>
+</g>
+<g >
+<title>malloc (12,805 samples, 0.02%)</title><rect x="364.7" y="101" width="0.2" height="15.0" fill="rgb(252,61,16)" rx="2" ry="2" />
+<text  x="367.70" y="111.5" ></text>
+</g>
+<g >
+<title>std::_Function_handler::_M_invoke (89,154 samples, 0.12%)</title><rect x="1183.2" y="85" width="1.4" height="15.0" fill="rgb(249,111,49)" rx="2" ry="2" />
+<text  x="1186.20" y="95.5" ></text>
+</g>
+<g >
+<title>memset (20,811 samples, 0.03%)</title><rect x="361.3" y="149" width="0.3" height="15.0" fill="rgb(247,197,42)" rx="2" ry="2" />
+<text  x="364.30" y="159.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::locate_state_event (7,413,190 samples, 10.00%)</title><rect x="371.0" y="133" width="118.1" height="15.0" fill="rgb(238,34,47)" rx="2" ry="2" />
+<text  x="374.01" y="143.5" >sct_kernel::sy..</text>
+</g>
+<g >
+<title>operator delete (7,800 samples, 0.01%)</title><rect x="337.2" y="229" width="0.1" height="15.0" fill="rgb(215,22,44)" rx="2" ry="2" />
+<text  x="340.19" y="239.5" ></text>
+</g>
+<g >
+<title>std::_Function_base::_Base_manager::_M_manager (65,644 samples, 0.09%)</title><rect x="1172.0" y="133" width="1.1" height="15.0" fill="rgb(251,212,23)" rx="2" ry="2" />
+<text  x="1175.03" y="143.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (115,570 samples, 0.16%)</title><rect x="1180.3" y="69" width="1.8" height="15.0" fill="rgb(245,60,25)" rx="2" ry="2" />
+<text  x="1183.31" y="79.5" ></text>
+</g>
+<g >
+<title>std::__detail::_Map_base::operator[] (408,576 samples, 0.55%)</title><rect x="479.1" y="85" width="6.5" height="15.0" fill="rgb(215,85,22)" rx="2" ry="2" />
+<text  x="482.11" y="95.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (6,887,916 samples, 9.30%)</title><rect x="706.7" y="101" width="109.7" height="15.0" fill="rgb(236,154,40)" rx="2" ry="2" />
+<text  x="709.70" y="111.5" >sct_core::ope..</text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_append (16,008 samples, 0.02%)</title><rect x="354.1" y="277" width="0.3" height="15.0" fill="rgb(213,55,7)" rx="2" ry="2" />
+<text  x="357.13" y="287.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::operator[] (12,000 samples, 0.02%)</title><rect x="336.4" y="245" width="0.2" height="15.0" fill="rgb(247,9,23)" rx="2" ry="2" />
+<text  x="339.43" y="255.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::write_trace (724,539 samples, 0.98%)</title><rect x="462.7" y="117" width="11.5" height="15.0" fill="rgb(244,25,30)" rx="2" ry="2" />
+<text  x="465.66" y="127.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::execute (52,065,237 samples, 70.27%)</title><rect x="360.4" y="181" width="829.2" height="15.0" fill="rgb(236,221,40)" rx="2" ry="2" />
+<text  x="363.44" y="191.5" >sct_kernel::synchronization_layer::execute</text>
+</g>
+<g >
+<title>memcpy (20,811 samples, 0.03%)</title><rect x="363.8" y="117" width="0.3" height="15.0" fill="rgb(221,121,50)" rx="2" ry="2" />
+<text  x="366.76" y="127.5" ></text>
+</g>
+<g >
+<title>pow (43,158 samples, 0.06%)</title><rect x="975.7" y="117" width="0.7" height="15.0" fill="rgb(227,204,10)" rx="2" ry="2" />
+<text  x="978.71" y="127.5" ></text>
+</g>
+<g >
+<title>operator delete (68,055 samples, 0.09%)</title><rect x="367.7" y="117" width="1.1" height="15.0" fill="rgb(254,40,33)" rx="2" ry="2" />
+<text  x="370.69" y="127.5" ></text>
+</g>
+<g >
+<title>malloc (12,953 samples, 0.02%)</title><rect x="1185.9" y="85" width="0.2" height="15.0" fill="rgb(225,103,6)" rx="2" ry="2" />
+<text  x="1188.93" y="95.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (412,636 samples, 0.56%)</title><rect x="388.7" y="117" width="6.5" height="15.0" fill="rgb(219,150,45)" rx="2" ry="2" />
+<text  x="391.66" y="127.5" ></text>
+</g>
+<g >
+<title>std::__detail::_Prime_rehash_policy::_M_need_rehash (65,998 samples, 0.09%)</title><rect x="1167.2" y="53" width="1.1" height="15.0" fill="rgb(230,41,50)" rx="2" ry="2" />
+<text  x="1170.24" y="63.5" ></text>
+</g>
+<g >
+<title>free (737,991 samples, 1.00%)</title><rect x="1039.6" y="85" width="11.8" height="15.0" fill="rgb(217,154,35)" rx="2" ry="2" />
+<text  x="1042.65" y="95.5" ></text>
+</g>
+<g >
+<title>std::__detail::_Prime_rehash_policy::_M_need_rehash (68,096 samples, 0.09%)</title><rect x="484.5" y="69" width="1.1" height="15.0" fill="rgb(209,52,35)" rx="2" ry="2" />
+<text  x="487.53" y="79.5" ></text>
+</g>
+<g >
+<title>memcpy (737,991 samples, 1.00%)</title><rect x="1074.9" y="85" width="11.8" height="15.0" fill="rgb(246,63,53)" rx="2" ry="2" />
+<text  x="1077.91" y="95.5" ></text>
+</g>
+<g >
+<title>__dynamic_cast (36,000 samples, 0.05%)</title><rect x="338.3" y="245" width="0.5" height="15.0" fill="rgb(253,113,54)" rx="2" ry="2" />
+<text  x="341.27" y="255.5" ></text>
+</g>
+<g >
+<title>operator new (8,000 samples, 0.01%)</title><rect x="310.1" y="245" width="0.1" height="15.0" fill="rgb(227,125,22)" rx="2" ry="2" />
+<text  x="313.09" y="255.5" ></text>
+</g>
+<g >
+<title>sct_core::ct_module::start_of_simulation (12,203 samples, 0.02%)</title><rect x="353.0" y="277" width="0.2" height="15.0" fill="rgb(209,103,23)" rx="2" ry="2" />
+<text  x="356.04" y="287.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::size (196,932 samples, 0.27%)</title><rect x="672.2" y="85" width="3.2" height="15.0" fill="rgb(223,114,44)" rx="2" ry="2" />
+<text  x="675.22" y="95.5" ></text>
+</g>
+<g >
+<title>operator new (8,000 samples, 0.01%)</title><rect x="340.7" y="261" width="0.1" height="15.0" fill="rgb(253,51,1)" rx="2" ry="2" />
+<text  x="343.68" y="271.5" ></text>
+</g>
+<g >
+<title>operator new (20,000 samples, 0.03%)</title><rect x="350.5" y="229" width="0.3" height="15.0" fill="rgb(243,29,15)" rx="2" ry="2" />
+<text  x="353.50" y="239.5" ></text>
+</g>
+<g >
+<title>memcpy (9,906 samples, 0.01%)</title><rect x="1188.0" y="85" width="0.2" height="15.0" fill="rgb(236,165,37)" rx="2" ry="2" />
+<text  x="1191.03" y="95.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::synchronization_layer (744,076 samples, 1.00%)</title><rect x="341.2" y="261" width="11.8" height="15.0" fill="rgb(242,24,29)" rx="2" ry="2" />
+<text  x="344.19" y="271.5" ></text>
+</g>
+<g >
+<title>std::_Function_base::_Base_manager::_M_manager (1,180,808 samples, 1.59%)</title><rect x="1136.6" y="117" width="18.8" height="15.0" fill="rgb(209,57,24)" rx="2" ry="2" />
+<text  x="1139.63" y="127.5" ></text>
+</g>
+<g >
+<title>boost::numeric::odeint::controlled_runge_kutta::resize_m_dxdt_impl (49,233 samples, 0.07%)</title><rect x="489.9" y="117" width="0.8" height="15.0" fill="rgb(229,95,43)" rx="2" ry="2" />
+<text  x="492.92" y="127.5" ></text>
+</g>
+<g >
+<title>__dynamic_cast (319,472 samples, 0.43%)</title><rect x="10.0" y="277" width="5.1" height="15.0" fill="rgb(254,82,19)" rx="2" ry="2" />
+<text  x="13.00" y="287.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_create (7,800 samples, 0.01%)</title><rect x="337.3" y="229" width="0.1" height="15.0" fill="rgb(233,179,14)" rx="2" ry="2" />
+<text  x="340.31" y="239.5" ></text>
+</g>
+<g >
+<title>operator new (16,000 samples, 0.02%)</title><rect x="343.8" y="245" width="0.3" height="15.0" fill="rgb(224,178,40)" rx="2" ry="2" />
+<text  x="346.85" y="255.5" ></text>
+</g>
+<g >
+<title>Neuron::set_initial_conditions (20,000 samples, 0.03%)</title><rect x="336.4" y="261" width="0.3" height="15.0" fill="rgb(217,193,45)" rx="2" ry="2" />
+<text  x="339.36" y="271.5" ></text>
+</g>
+<g >
+<title>memcpy (92,144 samples, 0.12%)</title><rect x="393.8" y="101" width="1.4" height="15.0" fill="rgb(211,70,48)" rx="2" ry="2" />
+<text  x="396.76" y="111.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::size (32,822 samples, 0.04%)</title><rect x="490.2" y="101" width="0.5" height="15.0" fill="rgb(242,61,34)" rx="2" ry="2" />
+<text  x="493.18" y="111.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (74,295 samples, 0.10%)</title><rect x="1186.5" y="85" width="1.2" height="15.0" fill="rgb(249,33,31)" rx="2" ry="2" />
+<text  x="1189.50" y="95.5" ></text>
+</g>
+<g >
+<title>memmove (71,769 samples, 0.10%)</title><rect x="39.1" y="277" width="1.1" height="15.0" fill="rgb(216,208,6)" rx="2" ry="2" />
+<text  x="42.07" y="287.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::size (32,822 samples, 0.04%)</title><rect x="491.7" y="101" width="0.6" height="15.0" fill="rgb(246,29,17)" rx="2" ry="2" />
+<text  x="494.75" y="111.5" ></text>
+</g>
+<g >
+<title>boost::numeric::odeint::controlled_runge_kutta::resize_m_xerr_impl (49,233 samples, 0.07%)</title><rect x="491.5" y="117" width="0.8" height="15.0" fill="rgb(247,45,20)" rx="2" ry="2" />
+<text  x="494.49" y="127.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::begin (8,012 samples, 0.01%)</title><rect x="371.8" y="101" width="0.1" height="15.0" fill="rgb(215,17,27)" rx="2" ry="2" />
+<text  x="374.75" y="111.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::restore_state (50,348 samples, 0.07%)</title><rect x="1174.7" y="149" width="0.8" height="15.0" fill="rgb(210,0,34)" rx="2" ry="2" />
+<text  x="1177.71" y="159.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::ode_system (24,000 samples, 0.03%)</title><rect x="335.4" y="261" width="0.4" height="15.0" fill="rgb(216,69,40)" rx="2" ry="2" />
+<text  x="338.41" y="271.5" ></text>
+</g>
+<g >
+<title>free (39,624 samples, 0.05%)</title><rect x="1179.3" y="85" width="0.6" height="15.0" fill="rgb(250,145,13)" rx="2" ry="2" />
+<text  x="1182.31" y="95.5" ></text>
+</g>
+<g >
+<title>memset (68,096 samples, 0.09%)</title><rect x="485.6" y="101" width="1.1" height="15.0" fill="rgb(228,101,47)" rx="2" ry="2" />
+<text  x="488.62" y="111.5" ></text>
+</g>
+<g >
+<title>sc_main (21,840,688 samples, 29.48%)</title><rect x="10.0" y="293" width="347.8" height="15.0" fill="rgb(237,8,46)" rx="2" ry="2" />
+<text  x="13.00" y="303.5" >sc_main</text>
+</g>
+<g >
+<title>sct_core::operator* (4,427,946 samples, 5.98%)</title><rect x="1016.1" y="117" width="70.6" height="15.0" fill="rgb(229,168,33)" rx="2" ry="2" />
+<text  x="1019.14" y="127.5" >sct_cor..</text>
+</g>
+<g >
+<title>malloc (46,228 samples, 0.06%)</title><rect x="1181.0" y="53" width="0.8" height="15.0" fill="rgb(220,65,25)" rx="2" ry="2" />
+<text  x="1184.04" y="63.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_create (11,808 samples, 0.02%)</title><rect x="355.3" y="277" width="0.2" height="15.0" fill="rgb(228,118,37)" rx="2" ry="2" />
+<text  x="358.28" y="287.5" ></text>
+</g>
+<g >
+<title>memcpy (19,812 samples, 0.03%)</title><rect x="1177.9" y="37" width="0.3" height="15.0" fill="rgb(227,224,14)" rx="2" ry="2" />
+<text  x="1180.86" y="47.5" ></text>
+</g>
+<g >
+<title>strcmp (20,003 samples, 0.03%)</title><rect x="356.5" y="277" width="0.3" height="15.0" fill="rgb(219,162,4)" rx="2" ry="2" />
+<text  x="359.49" y="287.5" ></text>
+</g>
+<g >
+<title>malloc (8,000 samples, 0.01%)</title><rect x="335.7" y="229" width="0.1" height="15.0" fill="rgb(224,68,41)" rx="2" ry="2" />
+<text  x="338.66" y="239.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::operator[] (68,096 samples, 0.09%)</title><rect x="478.0" y="85" width="1.1" height="15.0" fill="rgb(208,19,22)" rx="2" ry="2" />
+<text  x="481.03" y="95.5" ></text>
+</g>
+<g >
+<title>malloc (819,990 samples, 1.11%)</title><rect x="829.4" y="85" width="13.1" height="15.0" fill="rgb(211,37,3)" rx="2" ry="2" />
+<text  x="832.45" y="95.5" ></text>
+</g>
+<g >
+<title>malloc (9,906 samples, 0.01%)</title><rect x="1187.9" y="85" width="0.1" height="15.0" fill="rgb(210,100,39)" rx="2" ry="2" />
+<text  x="1190.87" y="95.5" ></text>
+</g>
+<g >
+<title>std::__detail::_Prime_rehash_policy::_M_need_rehash (8,000 samples, 0.01%)</title><rect x="340.2" y="197" width="0.1" height="15.0" fill="rgb(230,90,52)" rx="2" ry="2" />
+<text  x="343.18" y="207.5" ></text>
+</g>
+<g >
+<title>std::_Rb_tree_increment (68,055 samples, 0.09%)</title><rect x="368.8" y="117" width="1.1" height="15.0" fill="rgb(235,96,27)" rx="2" ry="2" />
+<text  x="371.77" y="127.5" ></text>
+</g>
+<g >
+<title>memcpy (8,000 samples, 0.01%)</title><rect x="343.7" y="245" width="0.1" height="15.0" fill="rgb(216,120,33)" rx="2" ry="2" />
+<text  x="346.66" y="255.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::has_been_activated_by_input (24,822 samples, 0.03%)</title><rect x="1189.2" y="149" width="0.4" height="15.0" fill="rgb(230,202,47)" rx="2" ry="2" />
+<text  x="1192.20" y="159.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::operator[] (65,998 samples, 0.09%)</title><rect x="1160.9" y="69" width="1.1" height="15.0" fill="rgb(207,8,0)" rx="2" ry="2" />
+<text  x="1163.94" y="79.5" ></text>
+</g>
+<g >
+<title>memcpy (1,147,986 samples, 1.55%)</title><rect x="798.1" y="69" width="18.3" height="15.0" fill="rgb(212,144,54)" rx="2" ry="2" />
+<text  x="801.11" y="79.5" ></text>
+</g>
+<g >
+<title>free (68,049 samples, 0.09%)</title><rect x="463.7" y="101" width="1.1" height="15.0" fill="rgb(244,13,47)" rx="2" ry="2" />
+<text  x="466.74" y="111.5" ></text>
+</g>
+<g >
+<title>operator new (64,049 samples, 0.09%)</title><rect x="469.1" y="85" width="1.0" height="15.0" fill="rgb(235,60,46)" rx="2" ry="2" />
+<text  x="472.10" y="95.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (16,000 samples, 0.02%)</title><rect x="344.1" y="245" width="0.3" height="15.0" fill="rgb(241,64,10)" rx="2" ry="2" />
+<text  x="347.10" y="255.5" ></text>
+</g>
+<g >
+<title>std::_Rb_tree_insert_and_rebalance (28,012 samples, 0.04%)</title><rect x="353.7" y="277" width="0.4" height="15.0" fill="rgb(252,89,25)" rx="2" ry="2" />
+<text  x="356.68" y="287.5" ></text>
+</g>
+<g >
+<title>memset (65,998 samples, 0.09%)</title><rect x="1165.1" y="37" width="1.1" height="15.0" fill="rgb(244,185,36)" rx="2" ry="2" />
+<text  x="1168.14" y="47.5" ></text>
+</g>
+<g >
+<title>sct_core::operator+ (2,295,972 samples, 3.10%)</title><rect x="1086.7" y="117" width="36.5" height="15.0" fill="rgb(205,190,31)" rx="2" ry="2" />
+<text  x="1089.66" y="127.5" >sct..</text>
+</g>
+<g >
+<title>sct_core::operator* (2,243,150 samples, 3.03%)</title><rect x="402.4" y="101" width="35.8" height="15.0" fill="rgb(224,201,18)" rx="2" ry="2" />
+<text  x="405.44" y="111.5" >sct..</text>
+</g>
+<g >
+<title>sct_core::my_vector::operator+= (737,991 samples, 1.00%)</title><rect x="1111.5" y="101" width="11.7" height="15.0" fill="rgb(226,62,17)" rx="2" ry="2" />
+<text  x="1114.47" y="111.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::operator[] (59,436 samples, 0.08%)</title><rect x="1183.7" y="53" width="0.9" height="15.0" fill="rgb(232,92,38)" rx="2" ry="2" />
+<text  x="1186.67" y="63.5" ></text>
+</g>
+<g >
+<title>std::_Rb_tree::_M_emplace_hint_unique (64,025 samples, 0.09%)</title><rect x="364.1" y="133" width="1.0" height="15.0" fill="rgb(212,154,13)" rx="2" ry="2" />
+<text  x="367.09" y="143.5" ></text>
+</g>
+<g >
+<title>free (14,859 samples, 0.02%)</title><rect x="1186.7" y="69" width="0.3" height="15.0" fill="rgb(242,26,26)" rx="2" ry="2" />
+<text  x="1189.74" y="79.5" ></text>
+</g>
+<g >
+<title>sc_core::sc_signal::register_port (1,309,884 samples, 1.77%)</title><rect x="310.5" y="277" width="20.8" height="15.0" fill="rgb(244,178,34)" rx="2" ry="2" />
+<text  x="313.47" y="287.5" ></text>
+</g>
+<g >
+<title>std::__detail::_Map_base::operator[] (395,988 samples, 0.53%)</title><rect x="1162.0" y="69" width="6.3" height="15.0" fill="rgb(225,88,43)" rx="2" ry="2" />
+<text  x="1164.99" y="79.5" ></text>
+</g>
+<g >
+<title>operator delete (131,996 samples, 0.18%)</title><rect x="1169.3" y="85" width="2.1" height="15.0" fill="rgb(217,180,20)" rx="2" ry="2" />
+<text  x="1172.35" y="95.5" ></text>
+</g>
+<g >
+<title>memcmp (1,258,324 samples, 1.70%)</title><rect x="18.4" y="277" width="20.0" height="15.0" fill="rgb(227,5,9)" rx="2" ry="2" />
+<text  x="21.39" y="287.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (35,710 samples, 0.05%)</title><rect x="1185.7" y="101" width="0.6" height="15.0" fill="rgb(206,177,37)" rx="2" ry="2" />
+<text  x="1188.70" y="111.5" ></text>
+</g>
+<g >
+<title>__gnu_cxx::__to_xstring (8,000 samples, 0.01%)</title><rect x="15.1" y="277" width="0.1" height="15.0" fill="rgb(244,159,20)" rx="2" ry="2" />
+<text  x="18.09" y="287.5" ></text>
+</g>
+<g >
+<title>strlen (8,000 samples, 0.01%)</title><rect x="340.4" y="213" width="0.2" height="15.0" fill="rgb(240,170,3)" rx="2" ry="2" />
+<text  x="343.43" y="223.5" ></text>
+</g>
+<g >
+<title>strlen (8,000 samples, 0.01%)</title><rect x="336.2" y="261" width="0.1" height="15.0" fill="rgb(231,201,44)" rx="2" ry="2" />
+<text  x="339.17" y="271.5" ></text>
+</g>
+<g >
+<title>std::_Function_handler::_M_invoke (4,427,946 samples, 5.98%)</title><rect x="868.6" y="101" width="70.5" height="15.0" fill="rgb(218,143,9)" rx="2" ry="2" />
+<text  x="871.62" y="111.5" >std::_F..</text>
+</g>
+<g >
+<title>boost::numeric::odeint::runge_kutta_dopri5::do_step_impl (28,011,004 samples, 37.80%)</title><rect x="493.1" y="117" width="446.0" height="15.0" fill="rgb(223,222,45)" rx="2" ry="2" />
+<text  x="496.05" y="127.5" >boost::numeric::odeint::runge_kutta_dopri5::do_step_impl</text>
+</g>
+<g >
+<title>sct_core::my_vector::operator+= (384,540 samples, 0.52%)</title><rect x="456.5" y="101" width="6.2" height="15.0" fill="rgb(221,181,37)" rx="2" ry="2" />
+<text  x="459.53" y="111.5" ></text>
+</g>
+<g >
+<title>rand (15,996,000 samples, 21.59%)</title><rect x="55.0" y="277" width="254.7" height="15.0" fill="rgb(213,131,27)" rx="2" ry="2" />
+<text  x="57.96" y="287.5" >rand</text>
+</g>
+<g >
+<title>std::_Rb_tree_decrement (27,978 samples, 0.04%)</title><rect x="353.2" y="277" width="0.5" height="15.0" fill="rgb(252,51,52)" rx="2" ry="2" />
+<text  x="356.24" y="287.5" ></text>
+</g>
+<g >
+<title>memcmp (217,399 samples, 0.29%)</title><rect x="346.6" y="229" width="3.5" height="15.0" fill="rgb(218,96,47)" rx="2" ry="2" />
+<text  x="349.59" y="239.5" ></text>
+</g>
+<g >
+<title>memcpy (819,990 samples, 1.11%)</title><rect x="645.8" y="69" width="13.1" height="15.0" fill="rgb(206,14,37)" rx="2" ry="2" />
+<text  x="648.84" y="79.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::operator+= (16,510 samples, 0.02%)</title><rect x="1179.0" y="53" width="0.2" height="15.0" fill="rgb(245,122,14)" rx="2" ry="2" />
+<text  x="1181.96" y="63.5" ></text>
+</g>
+<g >
+<title>__sprintf_chk (24,005 samples, 0.03%)</title><rect x="15.2" y="277" width="0.4" height="15.0" fill="rgb(252,212,5)" rx="2" ry="2" />
+<text  x="18.22" y="287.5" ></text>
+</g>
+<g >
+<title>memcpy (8,000 samples, 0.01%)</title><rect x="339.5" y="213" width="0.1" height="15.0" fill="rgb(218,208,50)" rx="2" ry="2" />
+<text  x="342.48" y="223.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (16,000 samples, 0.02%)</title><rect x="335.5" y="245" width="0.3" height="15.0" fill="rgb(228,83,53)" rx="2" ry="2" />
+<text  x="338.53" y="255.5" ></text>
+</g>
+<g >
+<title>std::_Hashtable::_M_assign_elements (20,024 samples, 0.03%)</title><rect x="1171.4" y="85" width="0.4" height="15.0" fill="rgb(247,176,39)" rx="2" ry="2" />
+<text  x="1174.45" y="95.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::write_trace (14,490 samples, 0.02%)</title><rect x="1188.5" y="101" width="0.2" height="15.0" fill="rgb(252,22,31)" rx="2" ry="2" />
+<text  x="1191.47" y="111.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (128,098 samples, 0.17%)</title><rect x="470.1" y="85" width="2.1" height="15.0" fill="rgb(225,118,29)" rx="2" ry="2" />
+<text  x="473.12" y="95.5" ></text>
+</g>
+<g >
+<title>std::_Rb_tree_decrement (64,049 samples, 0.09%)</title><rect x="472.2" y="85" width="1.0" height="15.0" fill="rgb(219,142,39)" rx="2" ry="2" />
+<text  x="475.16" y="95.5" ></text>
+</g>
+<g >
+<title>free (993,416 samples, 1.34%)</title><rect x="372.8" y="117" width="15.9" height="15.0" fill="rgb(233,10,1)" rx="2" ry="2" />
+<text  x="375.84" y="127.5" ></text>
+</g>
+<g >
+<title>operator delete (136,192 samples, 0.18%)</title><rect x="486.7" y="101" width="2.2" height="15.0" fill="rgb(230,203,45)" rx="2" ry="2" />
+<text  x="489.70" y="111.5" ></text>
+</g>
+<g >
+<title>memcpy (819,990 samples, 1.11%)</title><rect x="842.5" y="85" width="13.1" height="15.0" fill="rgb(224,195,25)" rx="2" ry="2" />
+<text  x="845.51" y="95.5" ></text>
+</g>
+<g >
+<title>std::_Hashtable::_M_assign_elements (12,141 samples, 0.02%)</title><rect x="488.9" y="101" width="0.2" height="15.0" fill="rgb(238,3,44)" rx="2" ry="2" />
+<text  x="491.87" y="111.5" ></text>
+</g>
+<g >
+<title>std::_Function_base::_Base_manager::_M_manager (56,084 samples, 0.08%)</title><rect x="371.9" y="101" width="0.9" height="15.0" fill="rgb(217,66,7)" rx="2" ry="2" />
+<text  x="374.95" y="111.5" ></text>
+</g>
+<g >
+<title>malloc (16,510 samples, 0.02%)</title><rect x="1178.4" y="53" width="0.3" height="15.0" fill="rgb(237,44,50)" rx="2" ry="2" />
+<text  x="1181.43" y="63.5" ></text>
+</g>
+<g >
+<title>operator new (8,000 samples, 0.01%)</title><rect x="338.1" y="229" width="0.1" height="15.0" fill="rgb(253,198,51)" rx="2" ry="2" />
+<text  x="341.08" y="239.5" ></text>
+</g>
+<g >
+<title>isspace (171,014 samples, 0.23%)</title><rect x="15.6" y="277" width="2.7" height="15.0" fill="rgb(220,111,51)" rx="2" ry="2" />
+<text  x="18.60" y="287.5" ></text>
+</g>
+<g >
+<title>operator new (12,805 samples, 0.02%)</title><rect x="364.3" y="117" width="0.2" height="15.0" fill="rgb(210,9,16)" rx="2" ry="2" />
+<text  x="367.29" y="127.5" ></text>
+</g>
+<g >
+<title>operator new (65,998 samples, 0.09%)</title><rect x="1166.2" y="37" width="1.0" height="15.0" fill="rgb(206,172,16)" rx="2" ry="2" />
+<text  x="1169.19" y="47.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::handle_reactivation (989,169 samples, 1.33%)</title><rect x="1173.8" y="165" width="15.8" height="15.0" fill="rgb(247,69,45)" rx="2" ry="2" />
+<text  x="1176.84" y="175.5" ></text>
+</g>
+<g >
+<title>malloc (68,049 samples, 0.09%)</title><rect x="465.9" y="85" width="1.1" height="15.0" fill="rgb(247,90,50)" rx="2" ry="2" />
+<text  x="468.91" y="95.5" ></text>
+</g>
+<g >
+<title>sct_core::ct_module::execute (52,086,048 samples, 70.30%)</title><rect x="360.1" y="197" width="829.5" height="15.0" fill="rgb(209,173,3)" rx="2" ry="2" />
+<text  x="363.11" y="207.5" >sct_core::ct_module::execute</text>
+</g>
+<g >
+<title>free (10,387 samples, 0.01%)</title><rect x="1174.9" y="117" width="0.1" height="15.0" fill="rgb(213,228,49)" rx="2" ry="2" />
+<text  x="1177.85" y="127.5" ></text>
+</g>
+<g >
+<title>malloc (491,994 samples, 0.66%)</title><rect x="1095.8" y="101" width="7.8" height="15.0" fill="rgb(246,172,37)" rx="2" ry="2" />
+<text  x="1098.80" y="111.5" ></text>
+</g>
+<g >
+<title>operator new (8,000 samples, 0.01%)</title><rect x="337.7" y="213" width="0.1" height="15.0" fill="rgb(206,207,28)" rx="2" ry="2" />
+<text  x="340.69" y="223.5" ></text>
+</g>
+<g >
+<title>__dynamic_cast (8,000 samples, 0.01%)</title><rect x="339.0" y="229" width="0.1" height="15.0" fill="rgb(216,26,32)" rx="2" ry="2" />
+<text  x="341.97" y="239.5" ></text>
+</g>
+<g >
+<title>thread_pool::worker_thread2 (52,254,474 samples, 70.52%)</title><rect x="357.8" y="277" width="832.2" height="15.0" fill="rgb(243,128,10)" rx="2" ry="2" />
+<text  x="360.83" y="287.5" >thread_pool::worker_thread2</text>
+</g>
+<g >
+<title>std::_Rb_tree::_M_emplace_hint_unique (384,294 samples, 0.52%)</title><rect x="468.1" y="101" width="6.1" height="15.0" fill="rgb(253,228,16)" rx="2" ry="2" />
+<text  x="471.08" y="111.5" ></text>
+</g>
+<g >
+<title>std::_Hashtable::_M_rehash (197,994 samples, 0.27%)</title><rect x="1164.1" y="53" width="3.1" height="15.0" fill="rgb(208,46,33)" rx="2" ry="2" />
+<text  x="1167.09" y="63.5" ></text>
+</g>
+<g >
+<title>std::_Rb_tree::_M_emplace_hint_unique (327,706 samples, 0.44%)</title><rect x="1131.4" y="101" width="5.2" height="15.0" fill="rgb(222,184,31)" rx="2" ry="2" />
+<text  x="1134.41" y="111.5" ></text>
+</g>
+<g >
+<title>__dynamic_cast (8,000 samples, 0.01%)</title><rect x="339.2" y="229" width="0.1" height="15.0" fill="rgb(211,19,44)" rx="2" ry="2" />
+<text  x="342.22" y="239.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (210,012 samples, 0.28%)</title><rect x="1128.1" y="101" width="3.3" height="15.0" fill="rgb(250,177,35)" rx="2" ry="2" />
+<text  x="1131.06" y="111.5" ></text>
+</g>
+<g >
+<title>inputs_manager::use_checkpoints (9,906 samples, 0.01%)</title><rect x="1183.5" y="53" width="0.2" height="15.0" fill="rgb(217,144,11)" rx="2" ry="2" />
+<text  x="1186.51" y="63.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::get_backup_state (20,811 samples, 0.03%)</title><rect x="361.8" y="149" width="0.3" height="15.0" fill="rgb(226,3,34)" rx="2" ry="2" />
+<text  x="364.77" y="159.5" ></text>
+</g>
+<g >
+<title>operator delete (20,000 samples, 0.03%)</title><rect x="350.2" y="229" width="0.3" height="15.0" fill="rgb(237,106,32)" rx="2" ry="2" />
+<text  x="353.18" y="239.5" ></text>
+</g>
+<g >
+<title>free (68,055 samples, 0.09%)</title><rect x="366.6" y="117" width="1.1" height="15.0" fill="rgb(211,78,12)" rx="2" ry="2" />
+<text  x="369.61" y="127.5" ></text>
+</g>
+<g >
+<title>sct_core::operator+ (3,279,960 samples, 4.43%)</title><rect x="816.4" y="101" width="52.2" height="15.0" fill="rgb(214,190,25)" rx="2" ry="2" />
+<text  x="819.39" y="111.5" >sct_c..</text>
+</g>
+<g >
+<title>std::_Function_handler::_M_invoke (52,106,859 samples, 70.32%)</title><rect x="359.8" y="213" width="829.8" height="15.0" fill="rgb(236,66,54)" rx="2" ry="2" />
+<text  x="362.77" y="223.5" >std::_Function_handler::_M_invoke</text>
+</g>
+<g >
+<title>std::call_once::$_1::_FUN (52,148,481 samples, 70.38%)</title><rect x="359.1" y="245" width="830.5" height="15.0" fill="rgb(253,119,0)" rx="2" ry="2" />
+<text  x="362.11" y="255.5" >std::call_once::$_1::_FUN</text>
+</g>
+<g >
+<title>sct_core::abs (9,906 samples, 0.01%)</title><rect x="1185.4" y="101" width="0.1" height="15.0" fill="rgb(215,218,50)" rx="2" ry="2" />
+<text  x="1188.38" y="111.5" ></text>
+</g>
+<g >
+<title>inputs_manager::get_event_list (51,600 samples, 0.07%)</title><rect x="337.0" y="245" width="0.8" height="15.0" fill="rgb(227,161,52)" rx="2" ry="2" />
+<text  x="340.00" y="255.5" ></text>
+</g>
+<g >
+<title>malloc (2,295,972 samples, 3.10%)</title><rect x="761.5" y="69" width="36.6" height="15.0" fill="rgb(220,72,14)" rx="2" ry="2" />
+<text  x="764.54" y="79.5" >mal..</text>
+</g>
+<g >
+<title>free (23,114 samples, 0.03%)</title><rect x="1180.7" y="53" width="0.3" height="15.0" fill="rgb(248,38,23)" rx="2" ry="2" />
+<text  x="1183.67" y="63.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_replace (16,000 samples, 0.02%)</title><rect x="351.5" y="229" width="0.3" height="15.0" fill="rgb(248,106,16)" rx="2" ry="2" />
+<text  x="354.52" y="239.5" ></text>
+</g>
+<g >
+<title>std::_Function_base::_Base_manager::_M_manager (20,811 samples, 0.03%)</title><rect x="1189.6" y="261" width="0.3" height="15.0" fill="rgb(251,125,31)" rx="2" ry="2" />
+<text  x="1192.60" y="271.5" ></text>
+</g>
+<g >
+<title>Neuron::set_sync_parameters (16,000 samples, 0.02%)</title><rect x="336.7" y="261" width="0.2" height="15.0" fill="rgb(217,163,43)" rx="2" ry="2" />
+<text  x="339.68" y="271.5" ></text>
+</g>
+<g >
+<title>std::_Sp_counted_ptr_inplace::_M_dispose (11,828 samples, 0.02%)</title><rect x="358.6" y="245" width="0.2" height="15.0" fill="rgb(244,81,11)" rx="2" ry="2" />
+<text  x="361.58" y="255.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_replace (56,030 samples, 0.08%)</title><rect x="355.5" y="277" width="0.9" height="15.0" fill="rgb(220,35,10)" rx="2" ry="2" />
+<text  x="358.47" y="287.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::calculate_solutions (51,055,257 samples, 68.90%)</title><rect x="360.8" y="165" width="813.0" height="15.0" fill="rgb(232,7,22)" rx="2" ry="2" />
+<text  x="363.77" y="175.5" >sct_kernel::synchronization_layer::calculate_solutions</text>
+</g>
+<g >
+<title>operator delete (20,811 samples, 0.03%)</title><rect x="358.2" y="245" width="0.3" height="15.0" fill="rgb(227,61,27)" rx="2" ry="2" />
+<text  x="361.16" y="255.5" ></text>
+</g>
+<g >
+<title>Neuron::is_event (35,200 samples, 0.05%)</title><rect x="1173.1" y="133" width="0.6" height="15.0" fill="rgb(216,87,33)" rx="2" ry="2" />
+<text  x="1176.14" y="143.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (118,872 samples, 0.16%)</title><rect x="1176.3" y="69" width="1.9" height="15.0" fill="rgb(234,74,21)" rx="2" ry="2" />
+<text  x="1179.28" y="79.5" ></text>
+</g>
+<g >
+<title>memcpy (16,510 samples, 0.02%)</title><rect x="1178.7" y="53" width="0.3" height="15.0" fill="rgb(252,173,5)" rx="2" ry="2" />
+<text  x="1181.70" y="63.5" ></text>
+</g>
+<g >
+<title>malloc (8,012 samples, 0.01%)</title><rect x="366.3" y="117" width="0.1" height="15.0" fill="rgb(245,123,22)" rx="2" ry="2" />
+<text  x="369.29" y="127.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_create (8,000 samples, 0.01%)</title><rect x="351.4" y="229" width="0.1" height="15.0" fill="rgb(235,187,25)" rx="2" ry="2" />
+<text  x="354.39" y="239.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::operator[] (2,951,964 samples, 3.98%)</title><rect x="892.1" y="69" width="47.0" height="15.0" fill="rgb(229,57,10)" rx="2" ry="2" />
+<text  x="895.13" y="79.5" >sct_..</text>
+</g>
+<g >
+<title>memcpy (491,994 samples, 0.66%)</title><rect x="1103.6" y="101" width="7.9" height="15.0" fill="rgb(225,209,20)" rx="2" ry="2" />
+<text  x="1106.63" y="111.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::size (32,822 samples, 0.04%)</title><rect x="492.5" y="101" width="0.6" height="15.0" fill="rgb(240,214,53)" rx="2" ry="2" />
+<text  x="495.53" y="111.5" ></text>
+</g>
+<g >
+<title>malloc (819,990 samples, 1.11%)</title><rect x="632.8" y="69" width="13.0" height="15.0" fill="rgb(236,109,50)" rx="2" ry="2" />
+<text  x="635.78" y="79.5" ></text>
+</g>
+<g >
+<title>sct_core::operator+ (1,538,160 samples, 2.08%)</title><rect x="438.2" y="117" width="24.5" height="15.0" fill="rgb(209,190,2)" rx="2" ry="2" />
+<text  x="441.16" y="127.5" >s..</text>
+</g>
+<g >
+<title>sct_core::my_vector::operator+= (16,510 samples, 0.02%)</title><rect x="1182.9" y="69" width="0.3" height="15.0" fill="rgb(239,56,41)" rx="2" ry="2" />
+<text  x="1185.93" y="79.5" ></text>
+</g>
+<g >
+<title>sc_core::sc_port_b::add_interface (32,000 samples, 0.04%)</title><rect x="309.7" y="277" width="0.5" height="15.0" fill="rgb(228,66,11)" rx="2" ry="2" />
+<text  x="312.71" y="287.5" ></text>
+</g>
+<g >
+<title>sct_kernel::synchronization_layer::has_been_activated_by_input (20,811 samples, 0.03%)</title><rect x="489.1" y="149" width="0.3" height="15.0" fill="rgb(211,80,5)" rx="2" ry="2" />
+<text  x="492.06" y="159.5" ></text>
+</g>
+<g >
+<title>inputs_manager::store_double_port (16,000 samples, 0.02%)</title><rect x="338.8" y="245" width="0.3" height="15.0" fill="rgb(215,141,2)" rx="2" ry="2" />
+<text  x="341.84" y="255.5" ></text>
+</g>
+<g >
+<title>std::__cxx11::basic_string::_M_create (7,800 samples, 0.01%)</title><rect x="340.3" y="213" width="0.1" height="15.0" fill="rgb(212,143,6)" rx="2" ry="2" />
+<text  x="343.31" y="223.5" ></text>
+</g>
+<g >
+<title>malloc (81,999 samples, 0.11%)</title><rect x="1124.5" y="101" width="1.3" height="15.0" fill="rgb(213,97,47)" rx="2" ry="2" />
+<text  x="1127.53" y="111.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::begin (263,992 samples, 0.36%)</title><rect x="984.2" y="117" width="4.2" height="15.0" fill="rgb(237,217,48)" rx="2" ry="2" />
+<text  x="987.23" y="127.5" ></text>
+</g>
+<g >
+<title>malloc (39,624 samples, 0.05%)</title><rect x="1177.2" y="37" width="0.7" height="15.0" fill="rgb(218,177,45)" rx="2" ry="2" />
+<text  x="1180.23" y="47.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::write_trace (168,080 samples, 0.23%)</title><rect x="362.4" y="149" width="2.7" height="15.0" fill="rgb(225,185,20)" rx="2" ry="2" />
+<text  x="365.43" y="159.5" ></text>
+</g>
+<g >
+<title>malloc (29,718 samples, 0.04%)</title><rect x="1187.0" y="69" width="0.4" height="15.0" fill="rgb(220,17,36)" rx="2" ry="2" />
+<text  x="1189.98" y="79.5" ></text>
+</g>
+<g >
+<title>boost::numeric::odeint::dense_output_runge_kutta::resize (36,054 samples, 0.05%)</title><rect x="371.2" y="101" width="0.6" height="15.0" fill="rgb(212,8,30)" rx="2" ry="2" />
+<text  x="374.18" y="111.5" ></text>
+</g>
+<g >
+<title>free (1,967,976 samples, 2.66%)</title><rect x="675.4" y="101" width="31.3" height="15.0" fill="rgb(247,205,31)" rx="2" ry="2" />
+<text  x="678.36" y="111.5" >free</text>
+</g>
+<g >
+<title>std::_Rb_tree_insert_and_rebalance (64,049 samples, 0.09%)</title><rect x="473.2" y="85" width="1.0" height="15.0" fill="rgb(240,182,35)" rx="2" ry="2" />
+<text  x="476.18" y="95.5" ></text>
+</g>
+<g >
+<title>free (1,147,986 samples, 1.55%)</title><rect x="743.3" y="69" width="18.2" height="15.0" fill="rgb(222,1,48)" rx="2" ry="2" />
+<text  x="746.26" y="79.5" ></text>
+</g>
+<g >
+<title>std::vector::_M_realloc_insert (24,000 samples, 0.03%)</title><rect x="337.4" y="229" width="0.4" height="15.0" fill="rgb(226,187,14)" rx="2" ry="2" />
+<text  x="340.44" y="239.5" ></text>
+</g>
+<g >
+<title>std::_Function_handler::_M_invoke (829,347 samples, 1.12%)</title><rect x="475.9" y="117" width="13.2" height="15.0" fill="rgb(234,145,42)" rx="2" ry="2" />
+<text  x="478.86" y="127.5" ></text>
+</g>
+<g >
+<title>boost::numeric::odeint::default_operations::scale_sum6::operator() (11,151,864 samples, 15.05%)</title><rect x="494.4" y="101" width="177.6" height="15.0" fill="rgb(243,157,2)" rx="2" ry="2" />
+<text  x="497.36" y="111.5" >boost::numeric::odeint:..</text>
+</g>
+<g >
+<title>operator new (483,280 samples, 0.65%)</title><rect x="47.2" y="277" width="7.7" height="15.0" fill="rgb(242,201,40)" rx="2" ry="2" />
+<text  x="50.20" y="287.5" ></text>
+</g>
+<g >
+<title>memset (65,998 samples, 0.09%)</title><rect x="1168.3" y="85" width="1.0" height="15.0" fill="rgb(250,192,8)" rx="2" ry="2" />
+<text  x="1171.29" y="95.5" ></text>
+</g>
+<g >
+<title>std::_Rb_tree_increment (10,387 samples, 0.01%)</title><rect x="1175.2" y="117" width="0.1" height="15.0" fill="rgb(211,44,36)" rx="2" ry="2" />
+<text  x="1178.18" y="127.5" ></text>
+</g>
+<g >
+<title>std::_Rb_tree_rebalance_for_erase (10,387 samples, 0.01%)</title><rect x="1175.3" y="117" width="0.2" height="15.0" fill="rgb(239,139,53)" rx="2" ry="2" />
+<text  x="1178.35" y="127.5" ></text>
+</g>
+<g >
+<title>sc_core::sc_port_b::if_typename (8,000 samples, 0.01%)</title><rect x="310.2" y="277" width="0.1" height="15.0" fill="rgb(244,160,36)" rx="2" ry="2" />
+<text  x="313.22" y="287.5" ></text>
+</g>
+<g >
+<title>free (81,999 samples, 0.11%)</title><rect x="1120.6" y="85" width="1.3" height="15.0" fill="rgb(232,149,33)" rx="2" ry="2" />
+<text  x="1123.61" y="95.5" ></text>
+</g>
+<g >
+<title>isspace (124,000 samples, 0.17%)</title><rect x="344.5" y="229" width="2.0" height="15.0" fill="rgb(219,59,40)" rx="2" ry="2" />
+<text  x="347.55" y="239.5" ></text>
+</g>
+<g >
+<title>memcpy (8,000 samples, 0.01%)</title><rect x="335.0" y="261" width="0.1" height="15.0" fill="rgb(208,106,7)" rx="2" ry="2" />
+<text  x="337.96" y="271.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::get_next_predictable_event_time (20,811 samples, 0.03%)</title><rect x="365.4" y="133" width="0.4" height="15.0" fill="rgb(237,79,30)" rx="2" ry="2" />
+<text  x="368.44" y="143.5" ></text>
+</g>
+<g >
+<title>memcpy (8,000 samples, 0.01%)</title><rect x="337.1" y="229" width="0.1" height="15.0" fill="rgb(213,162,37)" rx="2" ry="2" />
+<text  x="340.06" y="239.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (5,739,930 samples, 7.75%)</title><rect x="725.0" y="85" width="91.4" height="15.0" fill="rgb(230,181,49)" rx="2" ry="2" />
+<text  x="727.98" y="95.5" >sct_core::..</text>
+</g>
+<g >
+<title>free (36,322 samples, 0.05%)</title><rect x="1175.7" y="69" width="0.6" height="15.0" fill="rgb(247,114,40)" rx="2" ry="2" />
+<text  x="1178.70" y="79.5" ></text>
+</g>
+<g >
+<title>sc_core::sc_port_b::interface_count (8,000 samples, 0.01%)</title><rect x="310.3" y="277" width="0.2" height="15.0" fill="rgb(214,152,43)" rx="2" ry="2" />
+<text  x="313.34" y="287.5" ></text>
+</g>
+<g >
+<title>sct_core::ct_module::end_of_elaboration (1,051,513 samples, 1.42%)</title><rect x="336.3" y="277" width="16.7" height="15.0" fill="rgb(241,149,14)" rx="2" ry="2" />
+<text  x="339.30" y="287.5" ></text>
+</g>
+<g >
+<title>isspace (38,890 samples, 0.05%)</title><rect x="331.4" y="261" width="0.7" height="15.0" fill="rgb(222,125,22)" rx="2" ry="2" />
+<text  x="334.44" y="271.5" ></text>
+</g>
+<g >
+<title>boost::numeric::odeint::runge_kutta_dopri5::do_step_impl (564,889 samples, 0.76%)</title><rect x="1175.6" y="101" width="9.0" height="15.0" fill="rgb(239,178,39)" rx="2" ry="2" />
+<text  x="1178.62" y="111.5" ></text>
+</g>
+<g >
+<title>sct_kernel::ode_system::get_state (16,411 samples, 0.02%)</title><rect x="1171.8" y="133" width="0.2" height="15.0" fill="rgb(221,168,28)" rx="2" ry="2" />
+<text  x="1174.77" y="143.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::my_vector (204,147 samples, 0.28%)</title><rect x="464.8" y="101" width="3.3" height="15.0" fill="rgb(207,149,48)" rx="2" ry="2" />
+<text  x="467.83" y="111.5" ></text>
+</g>
+<g >
+<title>std::_Rb_tree_insert_and_rebalance (12,805 samples, 0.02%)</title><rect x="364.9" y="117" width="0.2" height="15.0" fill="rgb(221,219,0)" rx="2" ry="2" />
+<text  x="367.90" y="127.5" ></text>
+</g>
+<g >
+<title>inputs_manager::use_checkpoints (491,994 samples, 0.66%)</title><rect x="884.3" y="69" width="7.8" height="15.0" fill="rgb(220,203,17)" rx="2" ry="2" />
+<text  x="887.29" y="79.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (89,154 samples, 0.12%)</title><rect x="1186.3" y="101" width="1.4" height="15.0" fill="rgb(254,196,42)" rx="2" ry="2" />
+<text  x="1189.27" y="111.5" ></text>
+</g>
+<g >
+<title>sct_core::my_vector::operator[] (8,400 samples, 0.01%)</title><rect x="361.2" y="133" width="0.1" height="15.0" fill="rgb(241,227,49)" rx="2" ry="2" />
+<text  x="364.17" y="143.5" ></text>
+</g>
+<g >
+<title>std::_Rb_tree_insert_and_rebalance (65,525 samples, 0.09%)</title><rect x="1135.6" y="85" width="1.0" height="15.0" fill="rgb(245,45,30)" rx="2" ry="2" />
+<text  x="1138.58" y="95.5" ></text>
+</g>
+<g >
+<title>sct_core::operator* (3,689,955 samples, 4.98%)</title><rect x="1027.9" y="101" width="58.8" height="15.0" fill="rgb(211,219,28)" rx="2" ry="2" />
+<text  x="1030.89" y="111.5" >sct_co..</text>
+</g>
+<g >
+<title>malloc (65,525 samples, 0.09%)</title><rect x="1134.5" y="69" width="1.1" height="15.0" fill="rgb(251,118,33)" rx="2" ry="2" />
+<text  x="1137.54" y="79.5" ></text>
+</g>
+</g>
+</svg>
