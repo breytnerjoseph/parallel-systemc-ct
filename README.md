@@ -67,9 +67,10 @@ Please note that this implementation is a proof of concept and it is neither int
 ## Dependencies:
 1. [SystemC 2.3.1a.](https://www.accellera.org/images/downloads/standards/systemc/systemc-2.3.1a.tar.gz)
 2. Boost libraries (version 1.71), to install on debian-based systems execute `sudo apt-get install libboost-all-dev`
-3. [Eigen libraries (unstable version)] (https://gitlab.com/libeigen/eigen/-/archive/master/eigen-master.tar.bz2)
-4. (Optional, for comparison purposes) [SystemC AMS](https://www.coseda-tech.com/systemc-ams-proof-of-concept) compiled against SystemC 2.3.1a. 
-5. (Optional, for comparison purposes) MATLAB/Simulink or GNU Octave.
+3. [Intel TBB Library](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onetbb.html) 
+4. [Eigen libraries (unstable version)] (https://gitlab.com/libeigen/eigen/-/archive/master/eigen-master.tar.bz2)
+5. (Optional, for comparison purposes) [SystemC AMS](https://www.coseda-tech.com/systemc-ams-proof-of-concept) compiled against SystemC 2.3.1a. 
+6. (Optional, for comparison purposes) MATLAB/Simulink or GNU Octave.
 
 ## Installation:
 
